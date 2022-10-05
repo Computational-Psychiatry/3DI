@@ -24,6 +24,14 @@ Parameters here are as below
     - a) The user can put a string, which must be the filepath of the camera model. That is, if the did camera calibration and stored the output to a config file, we can put the path of the config file
     - b) The user can put a number, say, 120.0. In this case, the software will use a camera with a field of view of 120 degrees. This option should be used when we do not have calibration file for the camera---the calibration option above is expected to be better and eliminate the guesswork to find the correct fov
 
+Example command:
+
+`./video /offline_data/face/CAR/DSv2/interested/ML0001_2.mp4 ./output ./configs/fast.txt 50.0`
+
+If the video is collected using the SensorTree v3, you should run the code as below (i.e., using the calibration file named `TreeCam_1041a.txt`):
+
+`./video /offline_data/face/CAR/DSv2/interested/ML0325_1.mp4 ./output ./configs/fast.txt models/cameras/TreeCam_1041a.txt`
+
 ***
 
 # Output format
