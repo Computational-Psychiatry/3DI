@@ -3,7 +3,7 @@
 Follow the steps below to compile the code
 
 1. Clone this repository somewhere in your home directory via `git clone https://github.com/Computational-Psychiatry/3DI.git`
-1. Populate the `build/models` directory (to-be-filled)
+1. Populate the `build/models` directory by copying files (on `WS03`) with the command: `cp -r /offline_data/models/3DI/* <your-local-git-clone>/build/models/.`
 1. Go inside the `build` directory (`cd build`) and compile the code by running `./builder.sh`
 1. Optionally, clean unnecessary files by running `./cleaner.sh`
 
