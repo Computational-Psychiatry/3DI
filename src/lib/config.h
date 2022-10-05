@@ -68,7 +68,9 @@ namespace config
     extern int PRINT_DEBUG;
 
     extern int OUTDIR_WITH_PARAMS;
+    extern int PREPEND_BLANK_FRAMES;
 
+    extern int FILENAME_WITH_TIMES;
 
     /**
      * @brief Expression basis parameters
@@ -89,6 +91,9 @@ namespace config
     void set_confidence_range(double _confidence_range);
     void set_3DMM_coeffs(double opts_delta, double opts_delta_beta, double opts_delta_eps);
     void set_exp_basis(const std::string& basis_name);
+
+    void set_skip_first_nsecs(float _set_skip_first_nsecs);
+    void set_max_vid_frames_to_process(int _max_vid_frames_to_process);
 
     void set_params_from_YAML_file(const std::string& filepath);
 

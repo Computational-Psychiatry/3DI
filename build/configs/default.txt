@@ -50,6 +50,8 @@ MAX_VID_FRAMES_TO_PROCESS: 500
 # Save output files into subdir that encodes parameter setting
 # (this is needed if one compares multiple versions of the code)
 OUTDIR_WITH_PARAMS: 0
+FILENAME_WITH_TIMES: 1
+PREPEND_BLANK_FRAMES: 0
 ## Parameters that affect processing speed
 # The parameter below should ideally be set to something like 8, but it can be temporarily reduced (e.g., to 2) to speed up outputif we need to get results quickly 
 NTOT_RECONSTRS: 9

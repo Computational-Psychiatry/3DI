@@ -71,6 +71,10 @@ namespace config
     int PRINT_WARNINGS = 0;
     int PRINT_DEBUG = 0;
     int OUTDIR_WITH_PARAMS = 0;
+    int PREPEND_BLANK_FRAMES = 0;
+
+    int FILENAME_WITH_TIMES = 0;
+
 
 
 
@@ -128,6 +132,16 @@ namespace config
     void set_confidence_range(double _confidence_range)
     {
         CONFIDENCE_RANGE = _confidence_range;
+    }
+
+    void set_skip_first_nsecs(float _set_skip_first_nsecs)
+    {
+        SKIP_FIRST_N_SECS = _set_skip_first_nsecs;
+    }
+
+    void set_max_vid_frames_to_process(int _max_vid_frames_to_process)
+    {
+        MAX_VID_FRAMES_TO_PROCESS = _max_vid_frames_to_process;
     }
 
     void set_3DMM_coeffs(double opts_delta, double opts_delta_beta, double opts_delta_eps)
@@ -234,8 +248,10 @@ namespace config
         file["DPOSE_L2_WEIGHT"] >> DPOSE_L2_WEIGHT;
         file["USE_TEMP_SMOOTHING"] >> USE_TEMP_SMOOTHING;
         file["USE_EXP_REGULARIZATION"] >> USE_EXP_REGULARIZATION;
+        file["PREPEND_BLANK_FRAMES"] >> PREPEND_BLANK_FRAMES;
         file["TIME_T"] >> TIME_T;
         file["EXPR_UNIFORM_REG"] >> EXPR_UNIFORM_REG;
+        file["FILENAME_WITH_TIMES"] >> FILENAME_WITH_TIMES;
 
         int tmp;
         file["NFRAMES_PER_ANGLE_BIN"] >> tmp;

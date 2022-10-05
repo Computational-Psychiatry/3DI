@@ -666,6 +666,13 @@ bool VideoFitter::visualize_3dmesh(VideoOutput& out,
 
         vidIn >> frame;
 
+	if (!config::PREPEND_BLANK_FRAMES)
+	{
+            if (fi < config::SKIP_FIRST_N_SECS*FPS) {
+                continue;
+            }
+	}
+
         if (isnan(exp_coeffs[0]) || isnan(pose[0])) {
             cv::Mat blank(1080, 3240, CV_8UC3, cv::Scalar::all(255));
             vidOut << blank;
@@ -803,6 +810,13 @@ bool VideoFitter::visualize_texture(VideoOutput &out, std::string &input_path, s
             cv::cvtColor(frame, frame, cv::COLOR_RGB2GRAY);
 
         cv::Mat result(height, 2*width, CV_8U, cv::Scalar::all(255));
+
+	if (!config::PREPEND_BLANK_FRAMES)
+	{
+            if (fi < config::SKIP_FIRST_N_SECS*FPS) {
+                continue;
+            }
+	}
 
         if (isnan(exp_coeffs[0]) || exp_coeffs[0] == 0.0f) {
             vidOut << result;

@@ -93,7 +93,10 @@ int main(int argc, char** argv)
     if (!std::experimental::filesystem::exists(outputVideoDir))
         std::experimental::filesystem::create_directory(outputVideoDir);
 
-    outputVideoDir += "/" + config::get_key();
+    if (config::OUTDIR_WITH_PARAMS)
+        outputVideoDir += "/" + config::get_key();
+    else
+        outputVideoDir += "/";
 
     if (!std::experimental::filesystem::exists(outputVideoDir))
         std::experimental::filesystem::create_directory(outputVideoDir);
@@ -118,7 +121,25 @@ int main(int argc, char** argv)
         }
     }
 
-    outputVideoPath = outputVideoDir + "/" + remove_extension(base_name(filepath)) + ".avi";
+
+    int FPSvid=30;
+
+    {
+	cv::VideoCapture tmpCap(filepath);
+    	FPSvid = tmpCap.get(cv::CAP_PROP_FPS);
+    }
+
+    if (argc >= 8)
+        config::set_skip_first_nsecs(std::stof(argv[7]));
+
+    if (argc >= 9)
+        config::set_max_vid_frames_to_process(FPSvid*std::stoi(argv[8]));
+
+    if (config::FILENAME_WITH_TIMES)
+        outputVideoPath = outputVideoDir + "/" + remove_extension(base_name(filepath)) + "_" + std::to_string((int)config::SKIP_FIRST_N_SECS) + "-" + std::to_string((int)round(config::MAX_VID_FRAMES_TO_PROCESS/FPSvid)) + ".avi";
+    else
+	outputVideoPath = outputVideoDir + "/" + remove_extension(base_name(filepath)) + ".avi";
+
     std::string outputVideoPath_3D(""), outputVideoPath_texture("");
 
     if (outputVideoPath.size() > 0)
@@ -174,6 +195,9 @@ int main(int argc, char** argv)
 
     std::vector< std::vector<float> > id = read2DVectorFromFile<float>(argv[5],  NPTS, 3);
     std::vector< std::vector<float> > tex = read2DVectorFromFile<float>(argv[6],  NPTS, 1);
+
+    std::cout << "NSECS: " << config::SKIP_FIRST_N_SECS << std::endl;
+    std::cout << "MAXVID: " << config::MAX_VID_FRAMES_TO_PROCESS << std::endl;
 
 
     for (size_t pi=0; pi<NPTS; ++pi)
