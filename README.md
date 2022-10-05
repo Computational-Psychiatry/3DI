@@ -1,4 +1,4 @@
-# Compiling the Code
+# Compiling the code
 
 Follow the steps below to compile the code
 
@@ -11,7 +11,7 @@ Follow the steps below to compile the code
 
 # Running the code
 
-The code to process video is run as below
+If the code is compiled successfully with the instructions above, an executable file named `video` must be created in the `build` directory. Run this executable within the `build` directory as below
 
 `./video <path_to_video_file> <path_to_output_dir> <path_to_config_file> <camera_parameter>`
 
@@ -48,8 +48,8 @@ As seen in the section above, the code takes a config file as input. Below are c
 
 ### Output files
 - `OUTPUT_VISUALS`: Create the videos that visualize the result of 3D face reconstruction. **NOTE:** The first `SKIP_FIRST_N_SECS` seconds of the video will be blank, this is on purpose. Two videos will be produced: 
-    - 1) a video that shows the rendered pose+expression and frontal expression alongside with the input video
-    - 2) a video that shows the texture alongside the input video
+    - a) a video that shows the rendered pose+expression and frontal expression alongside with the input video
+    - b) a video that shows the texture alongside the input video
 
 ### Command line output
 - `PRINT_EVERY_N_FRAMES`: print the number of processed video frame every N frames. E.g., setting it to 100 will print a line every 100 frames
