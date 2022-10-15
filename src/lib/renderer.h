@@ -118,11 +118,14 @@ struct Renderer
 	 */
 	float *d_alphas_redundant, *d_betas_redundant, *d_gammas_redundant;
 
+    float *d_Zmins;
+
 	ushort Kalpha, Kbeta, Kepsilon;
 
 	ushort *d_inner_idx, *d_inner_idx_unique;
 	ushort *d_tl;
-	uint *d_redundant_idx;
+
+    uint *d_redundant_idx;
 
 	size_t pitch;
 	size_t pitch2;

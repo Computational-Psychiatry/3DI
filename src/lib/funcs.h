@@ -192,7 +192,7 @@ __global__ void set_xtmp(const float* search_dir, const float *x, float t_coef__
 void print_vector( void *d_vec, int Nsize, const std::string& title = "THE TITLE IS MISSING");
 void print_vector_double( void *d_vec, int Nsize, const std::string& title = "TITLE MISSING");
 void print_vector_bool( void *d_vec, int Nsize, const std::string& title= "THE TITLE IS MISSING");
-
+void print_vector_uint( void *d_vec, int Nsize, const std::string& title="TITLE MISSING");
 
 template <class T>
 T GetMax (T a, T b) {
@@ -252,7 +252,7 @@ template <class T>
 vector< vector<T> > read2DVectorFromFile(const std::string& FileName,  int rows, int cols);
 */
 
-
+__device__ __forceinline__ float atomicMinFloat (float * addr, float value);
 
 /**
  * pixel_idx: is the 1d index of the pixel on the image. this is necessary for z-buffering
@@ -262,7 +262,7 @@ __global__ void get_pixels_to_render(const ushort *tl, const float *xp, const fl
                                      float *alphas_redundant, float *betas_redundant, float *gammas_redundant,
                                      ushort* triangle_idx,
                                      const float *Z, float *Ztmp,
-                                     const ushort x0, const ushort y0);
+                                     const ushort x0, const ushort y0, float *Zmins, uint *redundant_idx);
 
 
 
@@ -272,6 +272,7 @@ __global__ void zbuffer_update(const ushort* sorted_pixel_idx, const ushort* uni
                                const uint *indices, const ushort *inner_indices, bool* rend_flag_tmp, const uint Nredundant,  const ushort N_unique_pixels , const uint N1);
 
 __global__ void fill_float_arr(float *arr, float val, int N);
+__global__ void keep_only_minZ(const float *Zmins, const float* Zs, const ushort* pixel_idx, uint* redundant_idx, int N);
 
 __global__ void render_expression_basis_texture(const float *EX, const float *EY, const float *EZ,
                                                 const float *alphas, const float *betas, const float *gammas, const uint *indices, const int N1,

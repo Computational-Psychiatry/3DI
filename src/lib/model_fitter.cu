@@ -121,6 +121,10 @@ void fit_3DMM_shape_rigid(uint t, Renderer& r, Optimizer& o, Logbarrier_Initiali
     HANDLE_ERROR( cudaMalloc( (void**)&logbarrier_multi_coef, sizeof(float)) );
     cudaMemcpy(logbarrier_multi_coef, yummymulti, sizeof(float), cudaMemcpyHostToDevice);
 
+    float tcoef_threshold = 0.075;
+    if (ov.T > 1)
+	    tcoef_threshold = 0.003;
+
     for (uint tau_iter = 0; tau_iter<1; ++tau_iter)
     {
         bool terminate = false;
@@ -203,7 +207,7 @@ void fit_3DMM_shape_rigid(uint t, Renderer& r, Optimizer& o, Logbarrier_Initiali
             while (inner_iter < MAX_INNER_ITERS)
             {
 //                if (t_coef < 0.032f) {
-                if (t_coef < 0.005f) {
+                if (t_coef < tcoef_threshold) {
                     terminate = true;
                     break;
                 }

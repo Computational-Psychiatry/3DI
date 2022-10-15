@@ -8,6 +8,16 @@
 #include "renderer.h"
 #include <fstream>
 #include "config.h"
+#include <thrust/remove.h>
+
+template<typename T>
+struct is_zero {
+    __host__ __device__
+    auto operator()(T x) const -> bool {
+        return x == 0;
+    }
+};
+
 
 Renderer::Renderer(uint T_, ushort _Kalpha, ushort _Kbeta, ushort _Kepsilon,
                    bool use_identity_, bool use_texture_, bool use_expression_,
@@ -58,6 +68,7 @@ Renderer::Renderer(uint T_, ushort _Kalpha, ushort _Kbeta, ushort _Kepsilon,
     HANDLE_ERROR( cudaMalloc( (void**)&d_Ztmp, sizeof(float)*Nredundant) );
 
 
+    HANDLE_ERROR(cudaMalloc((void**)&d_Zmins, sizeof(float)*DIMX*DIMY));
 
 
     /*
@@ -525,7 +536,10 @@ void Renderer::set_x0_short_y0_short(uint t, float *xp, float *yp, size_t array_
 void Renderer::render(uint t, Optimizer& o, OptimizationVariables& ov, const float *R, cublasHandle_t& handle,
                       ushort *N_unique_pixels, float *d_cropped_face, float *d_buffer_face, bool visualize, bool reset_texim)
 {
-    cudaMemset(o.gx_norm, 0, sizeof(float)*Nrender_estimated*6); // was 4
+
+    thrust::fill(thrust::device, d_Zmins, d_Zmins+DIMX*DIMY, std::numeric_limits<float>::max()); // or 999999.f if you prefer
+    cudaMemset(o.gx_norm, 0, sizeof(float)*Nrender_estimated*6);
+
     if (reset_texim)
         cudaMemset(d_texIm, 0, sizeof(float)*NTOTAL_PIXELS);
 
@@ -542,52 +556,17 @@ void Renderer::render(uint t, Optimizer& o, OptimizationVariables& ov, const flo
     int Nksx = Nrender_estimated*19+NTOTAL_PIXELS*2;
     reset_ushort_array<<<(Nksx + NTHREADS-1)/NTHREADS, NTHREADS>>>(o.d_KSX, Nksx);
 
-    reset_bool_flag<<<(Nredundant+NTHREADS-1)/NTHREADS, NTHREADS>>>(d_rend_flag, 		Nredundant);
-    reset_bool_flag<<<(Nredundant+NTHREADS-1)/NTHREADS, NTHREADS>>>(d_rend_flag_tmp, 	Nredundant);
 
-    get_pixels_to_render<<<(N_TRIANGLES+NTHREADS-1)/NTHREADS, NTHREADS>>>(d_tl, d_xp, d_yp,  d_rend_flag, d_pixel_idx,
-                                                                          d_alphas_redundant, d_betas_redundant, d_gammas_redundant,
-                                                                          d_triangle_idx, d_Z, d_Ztmp, x0_short[t], y0_short[t]);
-   
-    /*
-    thrust::device_ptr<float> x_ptr =  thrust::device_pointer_cast(d_xp);
-    thrust::device_ptr<float> y_ptr =  thrust::device_pointer_cast(d_yp);
+        get_pixels_to_render<<<(N_TRIANGLES*NTMP+NTHREADS-1)/NTHREADS, NTHREADS>>>(d_tl, d_xp, d_yp,  d_rend_flag, d_pixel_idx,
+                                                                              d_alphas_redundant, d_betas_redundant, d_gammas_redundant,
+                                                                              d_triangle_idx, d_Z, d_Ztmp, x0_short[t], y0_short[t],// cnt_per_pixel,
+                                                                              d_Zmins, d_redundant_idx);
 
-    int xmin_off = thrust::min_element(x_ptr, x_ptr + NPTS) - x_ptr;
-    int ymin_off = thrust::min_element(y_ptr, y_ptr + NPTS) - y_ptr;
-    int xmax_off = thrust::max_element(x_ptr, x_ptr + NPTS) - x_ptr;
-    int ymax_off = thrust::max_element(y_ptr, y_ptr + NPTS) - y_ptr;
+        keep_only_minZ<<<(Nredundant+NTHREADS-1)/NTHREADS, NTHREADS>>>(d_Zmins, d_Ztmp,  d_pixel_idx, d_redundant_idx, Nredundant);
+        uint *new_end_idx = thrust::remove_if(thrust::device, d_redundant_idx, d_redundant_idx+Nredundant, is_zero<uint>());
 
-    float xmin = *(x_ptr + xmin_off);
-    float xmax = *(x_ptr + xmax_off);
-    float ymin = *(y_ptr + ymin_off);
-    float ymax = *(y_ptr + ymax_off);
-    // we could also do this:
-    // double min_value = c_data[result_offset];
-    */
+        uint N1 = new_end_idx-d_redundant_idx;
 
-    HANDLE_ERROR( cudaMemcpy( d_rend_flag_tmp, d_rend_flag,  sizeof(bool)*N_TRIANGLES*NTMP, cudaMemcpyDeviceToDevice) );
-
-    thrust::sequence(thrust::device, d_redundant_idx, d_redundant_idx + Nredundant);
-
-    /*
-     * The rend_flag (or d_rend_flag_tmp) is now an array that bool values which are true if the corresponding
-     * pixel is to be rendered. E.g., [false, false, false, true, false, true, true, false, false, true ...]
-     * After this sorting, d_rend_flag_tmp will contain the flags in an ordered way
-     * [true, true, true, true, false, false, false, false, false,  ...]
-     *
-     * More specifically, the first N1 values (see N1 below) of d_rend_flag_tmp will become true and the rest false.
-     * The array d_redundant_idx will contain the indices of the pixels that yield this ordering.
-     *
-     * THE BELOW RELATIONSHIP WILL HOLD for i=1:N1 (see N1 below)
-     * d_rend_flag_tmp[i] = d_rend_flag[d_redundant_idx[i]];
-     */
-    thrust::sort_by_key(thrust::device, d_rend_flag_tmp, d_rend_flag_tmp + Nredundant, d_redundant_idx, thrust::greater<bool>());
-
-
-    // Number of points after rendering expression basis
-    // thrust::reduce contains the sum of the entire array
-    int N1 = thrust::reduce(thrust::device, d_rend_flag_tmp, d_rend_flag_tmp + Nredundant, 0);
     if (N1 > 2*Nrender_estimated) {
         std::cout << "N1 is " << N1 << " which is probably too much ..." << std::endl;
         return;
@@ -596,76 +575,9 @@ void Renderer::render(uint t, Optimizer& o, OptimizationVariables& ov, const flo
         return;
     }
 
-    HANDLE_ERROR(cudaMalloc((void**)&d_inner_idx, sizeof(ushort)*N1));
-    HANDLE_ERROR(cudaMalloc((void**)&d_inner_idx_unique, sizeof(ushort)*N1));
-    HANDLE_ERROR(cudaMalloc((void**)&d_pixel_idx2, sizeof(ushort)*N1));
-    HANDLE_ERROR(cudaMalloc((void**)&d_pixel_idx2_unique, sizeof(ushort)*N1));
 
-    /**
-     * Create d_pixel_idx2, which is a re-ordered version of d_pixel_idx.
-     * The reordered array (d_pixel_idx2) is reordered according to d_redundant_idx
-     *
-     * THE BELOW WILL TAKE PLACE:
-     * d_pixel_idx2[i] = d_pixel_idx[d_redundant_idx[i]];
-     */
-    populate_pixel_idx2<<<(N1+NTHREADS-1)/NTHREADS, NTHREADS>>>(d_pixel_idx, d_redundant_idx, d_pixel_idx2, N1);
-    thrust::sequence(thrust::device, d_inner_idx, d_inner_idx + N1);
+    *N_unique_pixels = N1;
 
-    HANDLE_ERROR( cudaMemcpy( d_inner_idx_unique, d_inner_idx,  sizeof(ushort)*N1, cudaMemcpyDeviceToDevice) );
-
-    /*
-     * Now re-order d_pixel_idx2 again! This time ordering is done simply from
-     * smallest to largest value (ascending order).
-     *
-     * This is necessary for finding overlapping pixels in an efficient manner
-     * After this re-ordering, overlapping pixels will be in consecutive positions,
-     * which is necessary for finding unique vectors with thrust efficiently as
-     * thrust::unique() finds repeated values only when they are consecutive
-     *
-     */
-    thrust::sort_by_key(thrust::device, d_pixel_idx2, d_pixel_idx2 + N1, d_inner_idx);
-    HANDLE_ERROR( cudaMemcpy( d_pixel_idx2_unique, d_pixel_idx2,  sizeof(ushort)*N1, cudaMemcpyDeviceToDevice) );
-
-    /**
-     * After the code below, d_pixel_idx2_unique will contain the unique pixel indices and
-     * d_inner_idx_unique will contain id of the unique pixel (see example code below).
-     */
-    thrust::pair<ushort*,ushort*> new_end = thrust::unique_by_key(thrust::device, d_pixel_idx2_unique, d_pixel_idx2_unique + N1, d_inner_idx_unique);
-    /*
-        int A[N] = {1, 3, 3, 3, 2, 2, 1}; // keys
-        int B[N] = {9, 8, 7, 6, 5, 4, 3}; // values
-        thrust::pair<int*,int*> new_end;
-        thrust::equal_to<int> binary_pred;
-        new_end = thrust::unique_by_key(keys, keys + N, values, binary_pred);
-        // The first four keys in A are now {1, 3, 2, 1} and new_end.first - A is 4.
-        // The first four values in B are now {9, 8, 5, 3} and new_end.second - B is 4.
-     */
-    *N_unique_pixels = new_end.first-d_pixel_idx2_unique;
-
-    /**
-     * This is where we apply the Z buffering. I.e., we look at pixels that are
-     * repeated and find the pixel with the smallest Z value. We do this efficiently
-     * with GPU: we initiate N_unique_pixels simultaneous searches where every
-     * search will end up finding the point with the smallest Z for one pixel location. E.g.
-     *
-     * e.g. a pixel idx repeated five times and corresponding Z values listed below
-     * 112 112 112 112 112
-     * 1.2 1.4 1.1 1.5 1.6
-     *          ^
-     *          |
-     * the search correspnding to pixel above will identify that the pixel in the middle
-     * is zero and then set to false the d_rend_flag_tmp value for all other pixels.
-     */
-    zbuffer_update<<<(*N_unique_pixels+NTHREADS-1)/NTHREADS, NTHREADS>>>(d_pixel_idx2, d_inner_idx_unique,
-                                                                         d_Ztmp, d_redundant_idx, d_inner_idx,
-                                                                         d_rend_flag_tmp, Nredundant, *N_unique_pixels , N1);
-
-    /**
-     * After zbuffer_update, the first N1 values d_rend_flag_tmp are no more all true -- we
-     * have some falses for points that were covered by other points that are closer to camera.
-     * This is bad for efficiency, that's why we reorder pixels below.
-     */
-    thrust::sort_by_key(thrust::device, d_rend_flag_tmp, d_rend_flag_tmp + N1, d_redundant_idx, thrust::greater<bool>());
 
     fill_diffuse_component_and_populate_texture_and_shape<<<(*N_unique_pixels+NTHREADS-1)/NTHREADS, NTHREADS>>>(X0, Y0, Z0,
                                                                                                                 X, Y, Z,
@@ -680,10 +592,11 @@ void Renderer::render(uint t, Optimizer& o, OptimizationVariables& ov, const flo
 
     fill_ks_and_M0<<<(*N_unique_pixels+NTHREADS-1)/NTHREADS, NTHREADS>>>(d_pixel_idx, d_redundant_idx, o.d_ks_sorted, o.d_ks_unsorted, o.d_M0, *N_unique_pixels);
 
+
     fill_tex_im1<<<(*N_unique_pixels+NTHREADS-1)/NTHREADS, NTHREADS>>>(o.d_ks_unsorted, o.d_tex_torender, d_texIm, *N_unique_pixels);
 
     if (visualize)
-    //if (true)
+    // if (true)
     {
         imshow_opencv(d_texIm, "TIM");
         imshow_opencv(d_cropped_face+t*(DIMX*DIMY), "INPUT");
@@ -714,12 +627,6 @@ void Renderer::render(uint t, Optimizer& o, OptimizationVariables& ov, const flo
     } else {
         cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, 1, 1, 2*Nrender_estimated, &h_log_barrier, o.gx_norm, 1, o.gxs_norm, 2*Nrender_estimated, &plus_one_, ov.grad_corr, 1);
     }
-
-
-    HANDLE_ERROR( cudaFree(d_pixel_idx2) );
-    HANDLE_ERROR( cudaFree(d_pixel_idx2_unique) );
-    HANDLE_ERROR( cudaFree(d_inner_idx) );
-    HANDLE_ERROR( cudaFree(d_inner_idx_unique) );
 }
 
 
@@ -759,7 +666,7 @@ void Renderer::render_for_illumination_only(uint t, Optimizer& o,  OptimizationV
 
 
     if (visualize) {
-    // if (true) {
+//     if (true) {
         imshow_opencv(d_texIm, "TIM");
         imshow_opencv(d_cropped_face+t*(DIMX*DIMY), "INPUT");
 
@@ -1183,8 +1090,6 @@ Renderer::~Renderer()
         HANDLE_ERROR( cudaFree( d_RTEX ));
     }
 
-
-
     HANDLE_ERROR( cudaFree(d_pixel_idx) );
     HANDLE_ERROR( cudaFree(d_triangle_idx) );
 
@@ -1208,6 +1113,9 @@ Renderer::~Renderer()
 
     HANDLE_ERROR( cudaFree( d_Ztmp ));
     HANDLE_ERROR( cudaFree( d_Z ));
+    HANDLE_ERROR( cudaFree( d_Zmins ));
+
+
 }
 
 

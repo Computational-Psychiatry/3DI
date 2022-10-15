@@ -416,6 +416,25 @@ void print_vector_bool( void *d_vec, int Nsize, const std::string& title)
     cudaMemcpy(h_vec, d_vec, sizeof(bool)*Nsize, cudaMemcpyDeviceToHost);
 
     for (uint i=0; i< Nsize; ++i) {
+        printf("%d", h_vec[i]);
+    }
+    printf("\n");
+    free(h_vec);
+}
+
+
+
+
+
+void print_vector_uint( void *d_vec, int Nsize, const std::string& title)
+{
+    std:: cout << title << " :::" << std::endl;
+    uint *h_vec;
+    h_vec = (uint*)malloc( Nsize*sizeof(uint) );
+
+    cudaMemcpy(h_vec, d_vec, sizeof(uint)*Nsize, cudaMemcpyDeviceToHost);
+
+    for (uint i=0; i< Nsize; ++i) {
         printf("%d ", h_vec[i]);
     }
     printf("\n");
@@ -730,6 +749,15 @@ __global__ void fill_grads(
 }
 
 
+__device__ __forceinline__ float atomicMinFloat (float * addr, float value) {
+        float old;
+        old = (value >= 0) ? __int_as_float(atomicMin((int *)addr, __float_as_int(value))) :
+             __uint_as_float(atomicMax((unsigned int *)addr, __float_as_uint(value)));
+
+        return old;
+}
+
+
 
 /**
  * pixel_idx: is the 1d index of the pixel on the image. this is necessary for z-buffering
@@ -741,7 +769,7 @@ __global__ void get_pixels_to_render(const ushort *tl, const float *xp, const fl
                                      float *alphas_redundant, float *betas_redundant, float *gammas_redundant,
                                      ushort* triangle_idx,
                                      const float *Z, float *Ztmp,
-                                     const ushort x0, const ushort y0)
+                                     const ushort x0, const ushort y0, float* Zmins, uint* redundant_idx)
 {
     const uint rowix = blockIdx.x;
     const uint colix = threadIdx.x;
@@ -751,6 +779,11 @@ __global__ void get_pixels_to_render(const ushort *tl, const float *xp, const fl
      * when the kernel runs, each node processes one triangle of the 3DMM.
      */
     const uint idx = colix + rowix*blockDim.x;
+
+    if (idx >= Nredundant)
+        return;
+
+    redundant_idx[idx] = idx;
 
     if (idx >= N_TRIANGLES)
         return;
@@ -765,8 +798,8 @@ __global__ void get_pixels_to_render(const ushort *tl, const float *xp, const fl
 
 
     uint ridx = 0;
-    for (ushort x=floorf(fmin(fmin(bx,cx),ax)); x< ceilf(fmax(fmax(bx,cx),ax)); ++x) {
-        for (ushort y=floorf(fmin(fmin(by,cy),ay)); y< ceilf(fmax(fmax(by,cy),ay)); ++y) {
+    for (ushort x=floorf(fmin(fmin(bx,cx),ax)); x<ceilf(fmax(fmax(bx,cx),ax)); ++x) {
+        for (ushort y=floorf(fmin(fmin(by,cy),ay)); y<ceilf(fmax(fmax(by,cy),ay)); ++y) {
 
             /**
              * Below we are computing the barymetric coordinates, which will determine
@@ -809,6 +842,11 @@ __global__ void get_pixels_to_render(const ushort *tl, const float *xp, const fl
 
                     pixel_idx[cidx] = (y-y0)+(x-x0)*(DIMY);
 
+//                    atomicAdd((unsigned int *)&cnt_per_pixel[pixel_idx[cidx]], 1);
+                    atomicMinFloat(&Zmins[pixel_idx[cidx]], Z[tl[idx]]);
+
+//                    atomicMinFloat()
+
                     triangle_idx[cidx] = idx;
                     Ztmp[cidx] = Z[tl[/*N_TRIANGLES*0+*/idx]];
 
@@ -821,6 +859,30 @@ __global__ void get_pixels_to_render(const ushort *tl, const float *xp, const fl
         }
     }
 }
+
+
+
+
+
+__global__ void keep_only_minZ(const float *Zmins, const float* Zs, const ushort* pixel_idx, uint* redundant_idx, int N)
+{
+    const int rowix = blockIdx.x;
+    const int colix = threadIdx.x;
+
+    int n = colix + rowix*blockDim.x;
+
+    if (n >= N)
+        return;
+
+//    if (fabsf(Zs[n]-Zmins[pixel_idx[n]]) >= 0.0000001f)
+    if (Zs[n]!=Zmins[pixel_idx[n]])
+        redundant_idx[n] = 0;
+}
+
+
+
+
+
 
 
 
