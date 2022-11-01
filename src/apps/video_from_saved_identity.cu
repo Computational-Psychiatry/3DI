@@ -35,7 +35,6 @@
 #include "preprocessing.h"
 #include "video_fitter.h"
 
-
 #include <glob.h> // glob(), globfree()
 #include <string.h> // memset()
 #include <stdexcept>
@@ -196,10 +195,6 @@ int main(int argc, char** argv)
     std::vector< std::vector<float> > id = read2DVectorFromFile<float>(argv[5],  NPTS, 3);
     std::vector< std::vector<float> > tex = read2DVectorFromFile<float>(argv[6],  NPTS, 1);
 
-    std::cout << "NSECS: " << config::SKIP_FIRST_N_SECS << std::endl;
-    std::cout << "MAXVID: " << config::MAX_VID_FRAMES_TO_PROCESS << std::endl;
-
-
     for (size_t pi=0; pi<NPTS; ++pi)
     {
         h_X0[pi] = id[pi][0];
@@ -245,7 +240,6 @@ int main(int argc, char** argv)
     pose_path.replace(pose_path.end()-4,pose_path.end(), ".poses");
 
     VideoOutput vid_out = vf.fit_video_frames_auto(filepath, outputVideoPath, &min_x, &max_x, &min_y, &max_y);
-
     vid_out.save_expressions(exp_path);
     vid_out.save_expressions_all(exp_all_path);
     vid_out.save_poses(pose_path, &vf.ov, &vf.rc);
