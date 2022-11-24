@@ -42,6 +42,17 @@ If the video is collected using the SensorTree v3, you should run the code as be
 
 Also, rendered videos that may be produced alongside with expression/pose coefficients and landmarks. See `OUTPUT_VISUALS` parameter below.
 
+*** 
+
+# Examples
+
+## Example 1: Landmarks (i.e., expression-related landmark movements)
+
+1. Run the command `./video vid_file.mp4 ./output ./config/default_output_landmarks.txt 90` 
+1. Check the file `./output/vid_file.landmarks_dexp` (see section Outputs above to interpret this file) 
+1. You can visualize the landmarks by following the script `./build/scripts/visualize_landmarks.py`
+
+
 ***
 
 # Config options
