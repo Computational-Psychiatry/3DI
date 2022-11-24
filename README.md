@@ -34,14 +34,13 @@ If the video is collected using the SensorTree v3, you should run the code as be
 
 ***
 
-# Output format
-
-We have essentially two critical outputs: the expression and the pose coefficients.
+# Outputs
 
 - **Expressions**: This is a text file that contains a matrix of size `Tx79`, where `T` is the number of processed frames, which is either the number of frames in the video or `MAX_VID_FRAMES_TO_PROCESS` if this parameter (see below) is smaller than the total number of frames in the video. If we set the SKIP_FIRST_N_SECS parameter (see below) to something greater than 0, then the first *K* frames (*K=SKIP_FIRST_N_SECSxFPS of video*) will contain `NaN` values. The k*th* row of this matrix contains the 79 expression coefficients corresponding to the k*th* frame of the video
-- **Pose**: This is a text file that contains a matrix of size `Tx6`, where `T` is as above and the first `K` frames may be `NaN` as described above. The first three columns contain the 3D translation parameters. The last three columns contain the pose (head orientation) parameters; **WARNING** these are not the angles, but the Euler-Rodrigues representation of the pose. Post-processing needs to be applied to convert them to angles (TO-DO).
+- **Pose**: This is a text file that contains a matrix of size `Tx6`, where `T` is as above and the first `K` frames may be `NaN` as described above. The first three columns contain the 3D translation parameters. The last three columns contain the pose (head orientation) parameters; **WARNING** these are not the angles, but the Euler-Rodrigues representation of the pose. Post-processing needs to be applied to convert them to angles (TO-DO). 
+- **Expression-related landmark movement**: This produces a text file (with the extension `.landmarks_dexp`) of size `Tx153`. The `k`th row contains the expression-related movement of the 51 landmarks at the `k`th frame, in the format `dX0 dY0 dZ0 dX1 dY1 dZ1 ... dX50 dY50 dZ50`. To obtain the absolute coordinates, you must add the mean face. Run script `build/scripts/visualize_landmarks.py` to see an example. The `OUTPUT_LANDMARKS_EXP_VARIATION` parameter must be set to 1 in order to produce this output.
 
-Also, rendered videos that may be produced alongside with expression and pose coefficients. See `OUTPUT_VISUALS` parameter below.
+Also, rendered videos that may be produced alongside with expression/pose coefficients and landmarks. See `OUTPUT_VISUALS` parameter below.
 
 ***
 
@@ -68,7 +67,6 @@ As seen in the section above, the code takes a config file as input. Below are c
 - `NTOT_RECONSTRS`: This parameter should ideally be set to something like 8, but it can be temporarily reduced (e.g., to 2) to speed up output if we need to get results quickly. This parameter affects the processing speed only at the identity learning phase, which is the preprocessing phase before we actually start processing the video. There is no point in increasing this parameter beyond 10
 - `NMULTICOMBS`: This parameter should typically be set to something like 4 or 6. Increasing it will reduce the temporal noise in the expression coefficients (and the jitter in the rendered video -- see `OUTPUT_VISUALS`), but will linearly increase processing time. There is no point in increasing this parameter beyond 12 (which will already be very slow)
 - `NRES_COEFS`: Ditto. A good rule of thumb is to make this parameter equal with `NMULTICOMBS`
-
 
 ### The output directory
 - `OUTDIR_WITH_PARAMS`: By default this should be set to 0. But if you want to run the code by varying certain parameters (see below) and observe the effect of each parameter, `OUTDIR_WITH_PARAMS` can be set to 1, as it will create a subdirectory (whose name will encode the parameter settings)
