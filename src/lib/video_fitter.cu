@@ -368,7 +368,7 @@ VideoOutput VideoFitter::fit_video_frames_auto(const std::string& filepath, cons
         all_landmarks.push_back(landmarks_this_frame);
     }
 
-    write_2d_vector(outputVideoPath+".landmarks_all", all_landmarks);
+    //!write_2d_vector(outputVideoPath+".landmarks_all", all_landmarks);
 
     // get stop time, and display the timing results
     cudaEventRecord( stop, 0 );
