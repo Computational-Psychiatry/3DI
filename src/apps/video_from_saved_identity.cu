@@ -124,7 +124,7 @@ int main(int argc, char** argv)
     }
 
 
-    int FPSvid=30;
+    double FPSvid=30;
 
     {
         cv::VideoCapture tmpCap(filepath);

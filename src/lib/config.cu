@@ -26,9 +26,9 @@ namespace config
     int OUTPUT_VISUALS = 0;
     int OUTPUT_FACIAL_PARTS = 0;
     int OUTPUT_LANDMARKS_EXP_VARIATION = 0;
-    int OUTPUT_EXPRESSIONS = 0;
+    int OUTPUT_EXPRESSIONS = 1;
     int OUTPUT_EXPRESSIONS_ALL = 0;
-    int OUTPUT_POSES = 0;
+    int OUTPUT_POSES = 1;
 
     int NMULTICOMBS = 4; //5; //15; // Landmark
     int NSMOOTH_FRAMES = 1;

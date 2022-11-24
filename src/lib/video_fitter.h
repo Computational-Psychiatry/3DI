@@ -106,7 +106,7 @@ struct VideoFitter
     float *search_dir_Lintensity, *dg_Lintensity;
 
     int min_x, max_x, min_y, max_y;
-    int FPS;
+    double FPS;
 
     int fit_video_frames_landmarks_sparse(const std::string& filepath,
                                               std::vector<std::vector<float> >& selected_frame_xps,
