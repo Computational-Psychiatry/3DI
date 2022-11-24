@@ -3,6 +3,7 @@
 #include "model_fitter.h"
 #include <experimental/filesystem>
 #include <random>
+#include <deque>
 
 #ifdef VISUALIZE_3D
 #include "GLfuncs.h"
@@ -203,6 +204,10 @@ VideoOutput VideoFitter::fit_video_frames_auto(const std::string& filepath, cons
                 detect_landmarks_opencv(face_rect, face_confidence, landmark_net, leye_net, reye_net, mouth_net, correction_net, frame,
                                         xp_vec, yp_vec, cur_face_size,
                                         xrange, yrange, config::USE_LOCAL_MODELS, false);
+
+                if (config::PAINT_INNERMOUTH_BLACK) {
+                    paint_innermouth_black(frame, xp_vec, yp_vec);
+                }
 
                 //                float tight_face_size = compute_face_size(&xp_vec[0], &yp_vec[0]);
                 id.add_data(frame, xp_vec, yp_vec, fi, cur_face_size);
@@ -502,7 +507,8 @@ bool VideoFitter::fit_to_video_frame(InputData &id)
         {
             li.compute_bounds(rel_fid, 1.0, 1.0, 1.0, std::vector<float>(), std::vector<float>(), true);
 
-            std::cout << "Failed fitting at this frame -- will ignore bounds" << std::endl;
+            if (config::PRINT_WARNINGS)
+               std::cout << "Failed fitting at this frame -- will ignore bounds" << std::endl;
 
             float xp[NLANDMARKS_51], yp[NLANDMARKS_51];
             id.get_resized_landmarks(rel_fid, cams[rel_fid].resize_coef, xp, yp);
@@ -577,6 +583,19 @@ bool VideoFitter::fit_to_video_frame(InputData &id)
     fit_3DMM_shape_rigid(0, r, o, li, handleDn, handle, d_cropped_face, d_buffer_face,
                          ov, ov_linesearch, cams, rc, rc_linesearch, dc, s, d_tmp, false);
 
+
+    if (config::FINETUNE_EXPRESSIONS)
+        fit_3DMM_epsilon_finetune(0, r, o, li, handleDn, handle, d_cropped_face, d_buffer_face, ov, ov_linesearch, cams, rc, rc_linesearch, dc, s, d_tmp, false);
+
+    //HANDLE_ERROR( cudaMemcpy( li.epsilon_lb, li.epsilon_lb_finetune, sizeof(float)*ov.Kepsilon, cudaMemcpyDeviceToDevice ) );
+    //HANDLE_ERROR( cudaMemcpy( li.epsilon_ub, li.epsilon_ub_finetune, sizeof(float)*ov.Kepsilon, cudaMemcpyDeviceToDevice ) );
+
+    //fit_3DMM_rigid_alone(0, r, o, li, handleDn, handle, d_cropped_face, d_buffer_face, ov, ov_linesearch, cams, rc, rc_linesearch, dc, s, d_tmp, false);
+    //fit_3DMM_epsilon_finetune(0, r, o, li, handleDn, handle, d_cropped_face, d_buffer_face, ov, ov_linesearch, cams, rc, rc_linesearch, dc, s, d_tmp, false);
+
+    /*
+    */
+
     success = true;
 
 
@@ -586,6 +605,442 @@ bool VideoFitter::fit_to_video_frame(InputData &id)
     ov_lb_linesearch.set_frame(0);
 
     return success;
+}
+
+
+
+
+
+
+
+
+
+
+
+bool VideoFitter::output_facial_parts(VideoOutput& out, std::string& input_path, std::string& output_path_sleye,
+                                  std::string& output_path_sreye, std::string& output_path_smouth,
+                                  vector<vector<float> >* all_exps, vector<vector<float> >* all_poses)
+{
+    cv::VideoCapture vidIn(input_path);
+    cv::VideoWriter vidOut_m, vidOut_le, vidOut_re;
+
+
+
+    int width = vidIn.get(cv::CAP_PROP_FRAME_WIDTH);
+    int height = vidIn.get(cv::CAP_PROP_FRAME_HEIGHT);
+
+    int partSize = 150;
+
+
+
+    if (!vidOut_m.isOpened())
+        vidOut_m.open(output_path_smouth, cv::VideoWriter::fourcc('D','I','V','X'), FPS, cv::Size(partSize,partSize), true);
+
+    if (!vidOut_le.isOpened())
+        vidOut_le.open(output_path_sleye, cv::VideoWriter::fourcc('D','I','V','X'), FPS, cv::Size(partSize,partSize), true);
+
+    if (!vidOut_re.isOpened())
+        vidOut_re.open(output_path_sreye, cv::VideoWriter::fourcc('D','I','V','X'), FPS, cv::Size(partSize,partSize), true);
+
+    vidOut_le.set(cv::VIDEOWRITER_PROP_QUALITY, 100);
+    vidOut_re.set(cv::VIDEOWRITER_PROP_QUALITY, 100);
+    vidOut_m.set(cv::VIDEOWRITER_PROP_QUALITY, 100);
+
+    size_t T = out.exp_coefs.size();
+
+    float *h_Xe = (float*)malloc(NPTS*sizeof(float));
+    float *h_Ye = (float*)malloc(NPTS*sizeof(float));
+    float *h_Ze = (float*)malloc(NPTS*sizeof(float));
+
+    float *h_Xr = (float*)malloc(NPTS*sizeof(float));
+    float *h_Yr = (float*)malloc(NPTS*sizeof(float));
+    float *h_Zr = (float*)malloc(NPTS*sizeof(float));
+
+    float *d_Xr, *d_Yr, *d_Zr;
+
+    cudaMalloc((void**)&d_Xr,  sizeof(float)*NPTS);
+    cudaMalloc((void**)&d_Yr,  sizeof(float)*NPTS);
+    cudaMalloc((void**)&d_Zr,  sizeof(float)*NPTS);
+
+    cv::Mat frame;
+
+
+    int Nframes = vidIn.get(cv::CAP_PROP_FRAME_COUNT);
+    FPS = vidIn.get(cv::CAP_PROP_FPS);
+
+    Nframes = std::min<int>(Nframes, config::MAX_VID_FRAMES_TO_PROCESS);
+
+    if (all_exps != NULL)
+        Nframes = std::min<int>(Nframes, all_exps->size());
+
+    std::deque<float> xlcs, xrcs;
+    std::deque<float> ylcs, yrcs;
+    std::deque<float> xms, yms;
+    std::deque<float> ciods;
+    std::deque<float> rolls;
+
+
+    float *h_xp = (float*)malloc( NPTS*sizeof(float) );
+    float *h_yp = (float*)malloc( NPTS*sizeof(float) );
+
+    for (size_t fi=0; fi<Nframes; ++fi)
+    {
+        cams[0].update_camera(1.0f);
+
+        std::vector<float> exp_coeffs, pose;
+        if (NULL != all_exps) {
+            if (fi >= all_exps->size())
+                break;
+            exp_coeffs = all_exps->at(fi);
+        } else
+            exp_coeffs = out.compute_avg_exp_coeffs(fi);
+
+        if (NULL != all_poses) {
+            if (fi >= all_poses->size())
+                break;
+            pose = all_poses->at(fi);
+        } else
+            pose = out.compute_avg_pose(fi);
+
+        std::vector<float> npose(pose);
+
+        npose[3] = 0.1f;
+        npose[4] = 0.0f;
+        npose[5] = 0.0f;
+
+
+        vidIn >> frame;
+
+        if (!config::PREPEND_BLANK_FRAMES)
+        {
+            if (fi < config::SKIP_FIRST_N_SECS*FPS) {
+                continue;
+            }
+        }
+
+        if (isnan(exp_coeffs[0]) || isnan(pose[0])) {
+            cv::Mat blank(partSize, partSize, CV_8UC3, cv::Scalar::all(255));
+            vidOut_m << blank;
+            vidOut_le << blank;
+            vidOut_re << blank;
+            continue;
+        }
+
+
+        if (cams[0].cam_remap) {
+            cv::remap(frame, frame, cams[0].map1, cams[0].map2, cv::INTER_LINEAR);
+        }
+
+        ov.set_frame(0);
+//        cudaMemcpy(ov.epsilons, &exp_coeffs[0], r.Kepsilon*sizeof(float), cudaMemcpyHostToDevice);
+        cudaMemcpy(ov.tauxs, &npose[0], 3*sizeof(float), cudaMemcpyHostToDevice);
+        cudaMemcpy(ov.u, &npose[0]+3, 3*sizeof(float), cudaMemcpyHostToDevice);
+
+        rc.set_u_ptr(ov.u);
+        rc.process();
+
+
+        r.compute_nonrigid_shape2(handle, ov, rc.R, cams[0]);
+        cudaMemcpy(h_Xe, r.X0, NPTS*sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(h_Ye, r.Y0, NPTS*sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(h_Ze, r.Z0, NPTS*sizeof(float), cudaMemcpyDeviceToHost);
+//        cv::Mat im3d = drawFace_fromptr(r.tl_vector, h_Xe, h_Ye, h_Ze);
+        r.compute_nonrigid_shape_identity_and_rotation(handle, ov, rc.R, d_Xr, d_Yr, d_Zr);
+        uint lis[NLANDMARKS_51] = {19106,19413,19656,19814,19981,20671,20837,20995,21256,21516,8161,8175,8184,8190,6758,7602,8201,8802,9641,1831,3759,5049,6086,4545,3515,10455,11482,12643,14583,12915,11881,5522,6154,7375,8215,9295,10523,10923,9917,9075,8235,7395,6548,5908,7264,8224,9184,10665,8948,8228,7508};
+
+        view_transform_3d_pts_and_render_2d<<<(NPTS+NTHREADS-1)/NTHREADS, NTHREADS>>>(r.X0, r.Y0, r.Z0,
+                                                                                      rc.R, ov.taux, ov.tauy, ov.tauz,
+                                                                                      cams[0].phix, cams[0].phiy, cams[0].cx, cams[0].cy,
+                                                                                      d_Xr, d_Yr, d_Zr,
+                                                                                      r.d_xp, r.d_yp);
+
+        float xleo, xreo, xlei, xrei, yleo, yreo, ylei, yrei;
+        cudaMemcpy(&xleo, r.d_xp+lis[19], sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(&xreo, r.d_xp+lis[28], sizeof(float), cudaMemcpyDeviceToHost);
+
+        std::vector<float> xp_vec, yp_vec;
+        for (uint pi=0; pi<51; ++pi)
+        {
+            xp_vec.push_back(h_xp[lis[pi]]);
+            yp_vec.push_back(h_yp[lis[pi]]);
+        }
+
+//        float canonical_iod = fabs(xreo-xleo);
+
+        float stdx = std::sqrt(variance<float>(xp_vec));
+        float stdy = std::sqrt(variance<float>(yp_vec));
+
+        float canonical_iod = 3*(stdx+stdy)/2.0f;
+
+        ov.set_frame(0);
+//        cudaMemcpy(ov.epsilons, &exp_coeffs[0], r.Kepsilon*sizeof(float), cudaMemcpyHostToDevice);
+        cudaMemcpy(ov.tauxs, &pose[0], 3*sizeof(float), cudaMemcpyHostToDevice);
+        cudaMemcpy(ov.u, &pose[0]+3, 3*sizeof(float), cudaMemcpyHostToDevice);
+
+        rc.set_u_ptr(ov.u);
+        rc.process();
+
+        r.compute_nonrigid_shape2(handle, ov, rc.R, cams[0]);
+        cudaMemcpy(h_Xe, r.X0, NPTS*sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(h_Ye, r.Y0, NPTS*sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(h_Ze, r.Z0, NPTS*sizeof(float), cudaMemcpyDeviceToHost);
+        r.compute_nonrigid_shape_identity_and_rotation(handle, ov, rc.R, d_Xr, d_Yr, d_Zr);
+
+        view_transform_3d_pts_and_render_2d<<<(NPTS+NTHREADS-1)/NTHREADS, NTHREADS>>>(r.X0, r.Y0, r.Z0,
+                                                                                      rc.R, ov.taux, ov.tauy, ov.tauz,
+                                                                                      cams[0].phix, cams[0].phiy, cams[0].cx, cams[0].cy,
+                                                                                      d_Xr, d_Yr, d_Zr,
+                                                                                      r.d_xp, r.d_yp);
+
+        cudaMemcpy(h_xp, r.d_xp, NPTS*sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(h_yp, r.d_yp, NPTS*sizeof(float), cudaMemcpyDeviceToHost);
+
+        float xmc(0.0f), ymc(0.0f);
+        for (uint pi=31; pi<51; ++pi)
+        {
+            xmc += h_xp[lis[pi]];
+            ymc += h_yp[lis[pi]];
+        }
+
+        xmc /= 20.0;
+        ymc /= 20.0;
+
+        cudaMemcpy(&xleo, r.d_xp+lis[19], sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(&xreo, r.d_xp+lis[28], sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(&yleo, r.d_yp+lis[19], sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(&yreo, r.d_yp+lis[28], sizeof(float), cudaMemcpyDeviceToHost);
+
+        cudaMemcpy(&xlei, r.d_xp+lis[22], sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(&xrei, r.d_xp+lis[25], sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(&ylei, r.d_yp+lis[22], sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(&yrei, r.d_yp+lis[25], sizeof(float), cudaMemcpyDeviceToHost);
+
+
+        cv::Point2f ple((xleo+xlei)/2.0f, (yleo+ylei)/2.0f);
+        cv::Point2f pre((xreo+xrei)/2.0f, (yreo+yrei)/2.0f);
+
+        double tri_h = sqrtf((ple.x-pre.x)*(ple.x-pre.x)+(ple.y-pre.y)*(ple.y-pre.y));
+        double tri_dy = fabs((ple.y-pre.y));
+        double angle = RAD2DEG(asin(tri_dy/tri_h));
+
+        if (pre.y>ple.y) {
+            angle *= -1.0f;
+        }
+
+        xlcs.push_back(ple.x);
+        xrcs.push_back(pre.x);
+        ylcs.push_back(ple.y);
+        yrcs.push_back(pre.y);
+        xms.push_back(xmc);
+        yms.push_back(ymc);
+        ciods.push_back(canonical_iod);
+        rolls.push_back(angle);
+
+        double smoothing_tw = 0.001f; // in secs
+        if (xlcs.size() > 1 && xlcs.size() >= std::round(smoothing_tw*FPS)) {
+            xlcs.pop_front();
+            xrcs.pop_front();
+            ylcs.pop_front();
+            yrcs.pop_front();
+            xms.pop_front();
+            yms.pop_front();
+            ciods.pop_front();
+            rolls.pop_front();
+        }
+
+        float xlc = std::accumulate(xlcs.begin(), xlcs.end(), 0.0f)/xlcs.size();
+        float xrc = std::accumulate(xrcs.begin(), xrcs.end(), 0.0f)/xrcs.size();
+        float ylc = std::accumulate(ylcs.begin(), ylcs.end(), 0.0f)/ylcs.size();
+        float yrc = std::accumulate(yrcs.begin(), yrcs.end(), 0.0f)/yrcs.size();
+        float xm = std::accumulate(xms.begin(), xms.end(), 0.0f)/xms.size();
+        float ym = std::accumulate(yms.begin(), yms.end(), 0.0f)/yms.size();
+        float ciod = std::accumulate(ciods.begin(), ciods.end(), 0.0f)/ciods.size();
+        float roll = std::accumulate(rolls.begin(), rolls.end(), 0.0f)/rolls.size();
+
+        float eye_size = ciod*1.55;
+        float mouth_size = ciod*1.85;
+
+        cv::Point2f tl_m(xm-mouth_size, ym-mouth_size);
+        cv::Point2f br_m(xm+mouth_size, ym+mouth_size);
+
+        cv::Point2f tl_le(xlc-eye_size, ylc-eye_size);
+        cv::Point2f br_le(xlc+eye_size, ylc+eye_size);
+
+        cv::Point2f tl_re(xrc-eye_size, yrc-eye_size);
+        cv::Point2f br_re(xrc+eye_size, yrc+eye_size);
+
+        std::vector<cv::Point2f> src_m, dst_m;
+        std::vector<cv::Point2f> src_le, dst_le;
+        std::vector<cv::Point2f> src_re, dst_re;
+        src_m.push_back(tl_m);
+        src_m.push_back(br_m);
+        src_le.push_back(tl_le);
+        src_le.push_back(br_le);
+        src_re.push_back(tl_re);
+        src_re.push_back(br_re);
+
+        std::vector<cv::Point2f> dst;
+        dst.push_back(cv::Point2f(0, 0));
+        dst.push_back(cv::Point2f(300, 300));
+
+        cv::Mat trMat_m  = cv::estimateRigidTransform(src_m, dst, false);
+        cv::Mat trMat_le = cv::estimateRigidTransform(src_le, dst, false);
+        cv::Mat trMat_re = cv::estimateRigidTransform(src_re, dst, false);
+
+        cv::Mat newFrame_m, newFrame_le, newFrame_re;
+        warpAffine(frame, newFrame_m, trMat_m, cv::Size(300, 300));
+        warpAffine(frame, newFrame_le, trMat_le, cv::Size(300, 300));
+        warpAffine(frame, newFrame_re, trMat_re, cv::Size(300, 300));
+
+        cv::Mat newFrameRot_m, newFrameRot_le, newFrameRot_re;
+
+        cv::Point2f center((newFrame_m.cols-1)/2.0, (newFrame_m.rows-1)/2.0);
+        cv::Mat rot = cv::getRotationMatrix2D(center, -roll, 1.0);
+
+        cv::warpAffine(newFrame_m, newFrameRot_m, rot, newFrame_m.size());
+        cv::warpAffine(newFrame_le, newFrameRot_le, rot, newFrame_le.size());
+        cv::warpAffine(newFrame_re, newFrameRot_re, rot, newFrame_re.size());
+
+        cv::Rect crop_region(75, 75, partSize, partSize);
+
+        vidOut_m << newFrameRot_m(crop_region);
+        vidOut_le << newFrameRot_le(crop_region);
+        vidOut_re << newFrameRot_re(crop_region);
+    }
+
+    free( h_xp );
+    free( h_yp );
+
+    cudaFree( d_Xr );
+    cudaFree( d_Yr );
+    cudaFree( d_Zr );
+
+    free(h_Xr);
+    free(h_Yr);
+    free(h_Zr);
+
+    free(h_Xe);
+    free(h_Ye);
+    free(h_Ze);
+
+    return true;
+}
+
+
+
+
+
+
+bool VideoFitter::output_landmarks_expression_variation(VideoOutput& out, std::string& input_path, std::string& output_landmarks_txt,
+                                  vector<vector<float> >* all_exps, vector<vector<float> >* all_poses)
+{
+    cv::VideoCapture vidIn(input_path);
+
+    float *h_Xe = (float*)malloc(NPTS*sizeof(float));
+    float *h_Ye = (float*)malloc(NPTS*sizeof(float));
+    float *h_Ze = (float*)malloc(NPTS*sizeof(float));
+
+    float *h_Xm = (float*)malloc(NPTS*sizeof(float));
+    float *h_Ym = (float*)malloc(NPTS*sizeof(float));
+    float *h_Zm = (float*)malloc(NPTS*sizeof(float));
+
+    cv::Mat frame;
+
+
+    int Nframes = vidIn.get(cv::CAP_PROP_FRAME_COUNT);
+    FPS = vidIn.get(cv::CAP_PROP_FPS);
+
+    Nframes = std::min<int>(Nframes, config::MAX_VID_FRAMES_TO_PROCESS);
+
+    if (all_exps != NULL)
+        Nframes = std::min<int>(Nframes, all_exps->size());
+
+    std::vector<std::vector<float> > landmarks;
+
+    for (size_t fi=0; fi<Nframes; ++fi)
+    {
+        cams[0].update_camera(1.0f);
+
+        std::vector<float> exp_coeffs, pose;
+        if (NULL != all_exps) {
+            if (fi >= all_exps->size())
+                break;
+            exp_coeffs = all_exps->at(fi);
+        } else
+            exp_coeffs = out.compute_avg_exp_coeffs(fi);
+
+        if (NULL != all_poses) {
+            if (fi >= all_poses->size())
+                break;
+            pose = all_poses->at(fi);
+        } else
+            pose = out.compute_avg_pose(fi);
+
+        std::vector<float> npose(pose);
+
+        npose[3] = 0.1f;
+        npose[4] = 0.0f;
+        npose[5] = 0.0f;
+
+        vidIn >> frame;
+
+        if (isnan(exp_coeffs[0]) || isnan(pose[0])) 
+        {
+            std::vector<float> clandmarks;
+            for (uint pi=0; pi<NLANDMARKS_51; ++pi)
+            {
+                clandmarks.push_back(NAN);
+                clandmarks.push_back(NAN);
+                clandmarks.push_back(NAN);
+            }
+            landmarks.push_back(clandmarks);
+            continue;
+        }
+
+        ov.set_frame(0);
+        cudaMemcpy(ov.epsilons, &exp_coeffs[0], r.Kepsilon*sizeof(float), cudaMemcpyHostToDevice);
+        cudaMemcpy(ov.tauxs, &npose[0], 3*sizeof(float), cudaMemcpyHostToDevice);
+        cudaMemcpy(ov.u, &npose[0]+3, 3*sizeof(float), cudaMemcpyHostToDevice);
+
+        rc.set_u_ptr(ov.u);
+        rc.process();
+
+        uint lis[NLANDMARKS_51] = {19106,19413,19656,19814,19981,20671,20837,20995,21256,21516,8161,8175,8184,8190,6758,7602,8201,8802,9641,1831,3759,5049,6086,4545,3515,10455,11482,12643,14583,12915,11881,5522,6154,7375,8215,9295,10523,10923,9917,9075,8235,7395,6548,5908,7264,8224,9184,10665,8948,8228,7508};
+
+        r.compute_nonrigid_shape2(handle, ov, rc.R, cams[0]);
+        cudaMemcpy(h_Xe, r.X0, NPTS*sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(h_Ye, r.Y0, NPTS*sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(h_Ze, r.Z0, NPTS*sizeof(float), cudaMemcpyDeviceToHost);
+
+        cudaMemcpy(h_Xm, r.X0_mean, NPTS*sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(h_Ym, r.Y0_mean, NPTS*sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(h_Zm, r.Z0_mean, NPTS*sizeof(float), cudaMemcpyDeviceToHost);
+
+        std::vector<float> clandmarks;
+        for (uint pi=0; pi<NLANDMARKS_51; ++pi)
+        {
+            float dx = h_Xe[lis[pi]]-h_Xm[lis[pi]];
+            float dy = h_Ye[lis[pi]]-h_Ym[lis[pi]];
+            float dz = h_Ze[lis[pi]]-h_Zm[lis[pi]];
+            clandmarks.push_back(dx);
+            clandmarks.push_back(dy);
+            clandmarks.push_back(dz);
+        }
+
+        landmarks.push_back(clandmarks);
+    }
+
+    write_2d_vector<float>(output_landmarks_txt, landmarks);
+
+    free(h_Xm);
+    free(h_Ym);
+    free(h_Zm);
+
+    free(h_Xe);
+    free(h_Ye);
+    free(h_Ze);
+
+    return true;
 }
 
 
@@ -740,11 +1195,9 @@ bool VideoFitter::visualize_3dmesh(VideoOutput& out,
     free(h_Xe);
     free(h_Ye);
     free(h_Ze);
+
+    return true;
 }
-
-
-
-
 
 
 
@@ -1131,6 +1584,7 @@ bool VideoFitter::learn_identity(const std::string& filepath, float *h_X0, float
 
     for (uint num_rec=0; num_rec<config::NTOT_RECONSTRS; ++num_rec)
     {
+        std::cout << num_rec << std::endl;
         cam0.update_camera(1.0f);
         size_t fstart = num_rec*config::NFRAMES;
         size_t fend = fstart + config::NFRAMES;
@@ -1189,6 +1643,8 @@ bool VideoFitter::learn_identity(const std::string& filepath, float *h_X0, float
         free(h_Z0_cur);
     }
 
+    if (num_used_recs == 0)
+        return false;
 
     float weight_ = ((float) 1./((float) num_used_recs)) ;
     for (size_t pi=0; pi<NPTS; ++pi)
@@ -1199,6 +1655,8 @@ bool VideoFitter::learn_identity(const std::string& filepath, float *h_X0, float
         h_tex_mu[pi] *= weight_;
         //        std::cout << h_tex_mu[pi] << std::endl;
     }
+
+    return true;
 }
 
 
@@ -1223,6 +1681,8 @@ bool VideoFitter::fit_multiframe(const std::vector<std::vector<float> >& selecte
         cams[i].update_camera(config::REF_FACE_SIZE/face_sizes[i]);
     }
 
+    ov_lb.set_frame(0);
+    ov_lb_linesearch.set_frame(0);
     ov.set_frame(0);
     ov_linesearch.set_frame(0);
 

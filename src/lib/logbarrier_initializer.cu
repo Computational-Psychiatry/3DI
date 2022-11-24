@@ -131,6 +131,10 @@ Logbarrier_Initializer::Logbarrier_Initializer(std::vector<Camera> *_cams_ptr,  
     HANDLE_ERROR( cudaMalloc( (void**)&alpha_ub, sizeof(float)*ov->Kalpha ) );
     HANDLE_ERROR( cudaMalloc( (void**)&epsilon_lb, sizeof(float)*ov->Kepsilon ) );
     HANDLE_ERROR( cudaMalloc( (void**)&epsilon_ub, sizeof(float)*ov->Kepsilon ) );
+    HANDLE_ERROR( cudaMalloc( (void**)&epsilon_lb_regular, sizeof(float)*ov->Kepsilon ) );
+    HANDLE_ERROR( cudaMalloc( (void**)&epsilon_ub_regular, sizeof(float)*ov->Kepsilon ) );
+    HANDLE_ERROR( cudaMalloc( (void**)&epsilon_lb_finetune, sizeof(float)*ov->Kepsilon ) );
+    HANDLE_ERROR( cudaMalloc( (void**)&epsilon_ub_finetune, sizeof(float)*ov->Kepsilon ) );
 
     if (ov->Kbeta > 0) {
         HANDLE_ERROR( cudaMalloc( (void**)&beta_lb, sizeof(float)*ov->Kbeta) );
@@ -281,7 +285,7 @@ Logbarrier_Initializer::Logbarrier_Initializer(std::vector<Camera> *_cams_ptr,  
     float opts_delta_eps = config::OPTS_DELTA_EPS; //1.3f;
     float opts_beta = config::OPTS_DELTA_BETA;// 2.5f*opts_delta;
 
-    float *h_alpha_lb, *h_alpha_ub, *h_epsilon_lb, *h_epsilon_ub, *h_beta_lb = NULL, *h_beta_ub = NULL;
+    float *h_alpha_lb, *h_alpha_ub, *h_epsilon_lb, *h_epsilon_ub, *h_epsilon_lb_finetune, *h_epsilon_ub_finetune, *h_beta_lb = NULL, *h_beta_ub = NULL;
     if (ov->Kbeta > 0) {
         h_beta_lb = vec2arr(sigma_betas_vec, ov->Kbeta, 1, false, -opts_beta);
         h_beta_ub = vec2arr(sigma_betas_vec, ov->Kbeta, 1, false, opts_beta);
@@ -290,8 +294,10 @@ Logbarrier_Initializer::Logbarrier_Initializer(std::vector<Camera> *_cams_ptr,  
     h_alpha_lb = vec2arr(sigma_alphas_vec, ov->Kalpha, 1, false, -opts_delta);
     h_alpha_ub = vec2arr(sigma_alphas_vec, ov->Kalpha, 1, false, opts_delta);
 
-    h_epsilon_lb = vec2arr(sigma_epsilons_vec_lower, ov->Kepsilon, 1, false, opts_delta*opts_delta_eps);
-    h_epsilon_ub = vec2arr(sigma_epsilons_vec_upper, ov->Kepsilon, 1, false, opts_delta*opts_delta_eps);
+    h_epsilon_lb = vec2arr(sigma_epsilons_vec_lower, ov->Kepsilon, 1, false, opts_delta_eps);
+    h_epsilon_ub = vec2arr(sigma_epsilons_vec_upper, ov->Kepsilon, 1, false, opts_delta_eps);
+    h_epsilon_lb_finetune = vec2arr(sigma_epsilons_vec_lower, ov->Kepsilon, 1, false, config::FINETUNE_COEF*opts_delta_eps);
+    h_epsilon_ub_finetune = vec2arr(sigma_epsilons_vec_upper, ov->Kepsilon, 1, false, config::FINETUNE_COEF*opts_delta_eps);
 
     if (config::USE_EXPR_COMPONENT != -1)
     {
@@ -311,8 +317,15 @@ Logbarrier_Initializer::Logbarrier_Initializer(std::vector<Camera> *_cams_ptr,  
 
     HANDLE_ERROR( cudaMemcpy( alpha_lb, h_alpha_lb, sizeof(float)*ov->Kalpha, cudaMemcpyHostToDevice ) );
     HANDLE_ERROR( cudaMemcpy( alpha_ub, h_alpha_ub, sizeof(float)*ov->Kalpha, cudaMemcpyHostToDevice ) );
+
     HANDLE_ERROR( cudaMemcpy( epsilon_lb, h_epsilon_lb, sizeof(float)*ov->Kepsilon, cudaMemcpyHostToDevice ) );
     HANDLE_ERROR( cudaMemcpy( epsilon_ub, h_epsilon_ub, sizeof(float)*ov->Kepsilon, cudaMemcpyHostToDevice ) );
+
+    HANDLE_ERROR( cudaMemcpy( epsilon_lb_regular, h_epsilon_lb, sizeof(float)*ov->Kepsilon, cudaMemcpyHostToDevice ) );
+    HANDLE_ERROR( cudaMemcpy( epsilon_ub_regular, h_epsilon_ub, sizeof(float)*ov->Kepsilon, cudaMemcpyHostToDevice ) );
+
+    HANDLE_ERROR( cudaMemcpy( epsilon_lb_finetune, h_epsilon_lb_finetune, sizeof(float)*ov->Kepsilon, cudaMemcpyHostToDevice ) );
+    HANDLE_ERROR( cudaMemcpy( epsilon_ub_finetune, h_epsilon_ub_finetune, sizeof(float)*ov->Kepsilon, cudaMemcpyHostToDevice ) );
 
 //    vector< vector<float> > h_eps_l2weights_vec = read2DVectorFromFile<float>(***, ov->Kepsilon, 1);
 //    h_eps_l2weights = vec2arr(h_eps_l2weights_vec, ov->Kepsilon, 1, false, 1.0f);
@@ -422,6 +435,8 @@ Logbarrier_Initializer::Logbarrier_Initializer(std::vector<Camera> *_cams_ptr,  
 
     free(h_epsilon_lb);
     free(h_epsilon_ub);
+    free(h_epsilon_lb_finetune);
+    free(h_epsilon_ub_finetune);
 
     free(h_AL);
     free(h_EL);
@@ -1240,7 +1255,8 @@ bool Logbarrier_Initializer::fit_model(cusolverDnHandle_t& handleDn,
             bool solve_success = s.solve(handleDn);
             if (!solve_success) {
     	        terminate = true;
-                std::cout << "failed to solve" << std::endl;
+                if (config::PRINT_WARNINGS)
+                    std::cout << "failed to solve" << std::endl;
 	        	break;
             }
 
@@ -2340,6 +2356,10 @@ Logbarrier_Initializer::~Logbarrier_Initializer()
     HANDLE_ERROR( cudaFree( alpha_ub ) );
     HANDLE_ERROR( cudaFree( epsilon_lb ) );
     HANDLE_ERROR( cudaFree( epsilon_ub ) );
+    HANDLE_ERROR( cudaFree( epsilon_lb_finetune ) );
+    HANDLE_ERROR( cudaFree( epsilon_ub_finetune ) );
+    HANDLE_ERROR( cudaFree( epsilon_lb_regular ) );
+    HANDLE_ERROR( cudaFree( epsilon_ub_regular ) );
 
     HANDLE_ERROR( cudaFree( eps_l2weights ) );
     HANDLE_ERROR( cudaFree( eps_l2weights_x2 ) );

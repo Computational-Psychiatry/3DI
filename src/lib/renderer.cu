@@ -314,14 +314,14 @@ Renderer::Renderer(uint T_, ushort _Kalpha, ushort _Kbeta, ushort _Kepsilon,
         for (int i=0; i<NPTS; ++i) {
             for (int j=0; j<Kbeta; ++j) {
                 int idx = i+j*NPTS;
-                TEX[idx] = TEX_vec[i][j]/255.0f;
+                TEX[idx] = TEX_vec[i][j]; ///255.0f;
             }
         }
 
         for (uint idx=0; idx<NPTS*Kbeta; ++idx) {
             int col = idx % Kbeta;
             int row = idx/Kbeta;
-            TEX_row_major[idx] = TEX_vec[row][col]/255.0f;
+            TEX_row_major[idx] = TEX_vec[row][col];///255.0f;
         }
     }
 
@@ -498,8 +498,8 @@ void Renderer::set_x0_short_y0_short(uint t, float *xp, float *yp, size_t array_
 
     if (pad)
     {
-        x0_short[t] = (ushort) (std::max<float>(*x0f-xsize, 0));
-        y0_short[t] = (ushort) (std::max<float>(*y0f-ysize, 0));
+        x0_short[t] = (ushort) (std::max<float>(*x0f-xsize/1.5, 0));
+        y0_short[t] = (ushort) (std::max<float>(*y0f-ysize/1.5, 0));
     }
     else
     {
@@ -596,13 +596,13 @@ void Renderer::render(uint t, Optimizer& o, OptimizationVariables& ov, const flo
     fill_tex_im1<<<(*N_unique_pixels+NTHREADS-1)/NTHREADS, NTHREADS>>>(o.d_ks_unsorted, o.d_tex_torender, d_texIm, *N_unique_pixels);
 
     if (visualize)
-    // if (true)
+    //if (true)
     {
         imshow_opencv(d_texIm, "TIM");
         imshow_opencv(d_cropped_face+t*(DIMX*DIMY), "INPUT");
 
         cv::waitKey(1);
-//        cv::waitKey(0);
+        //cv::waitKey(0);
     }
 
     convolutionRowsGPU( d_buffer_face, d_texIm, DIMX, DIMY );

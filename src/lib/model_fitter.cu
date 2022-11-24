@@ -9,6 +9,7 @@
 #include "model_fitter.h"
 #include "constants.h"
 #include "funcs.h"
+#include "preprocessing.h"
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/core/cuda.hpp>
 #include <experimental/filesystem>
@@ -93,7 +94,7 @@ void get_obj_hessian_and_gradient_multiframe(Renderer& r, Optimizer& o, Logbarri
 
 
 
-void fit_3DMM_shape_rigid(uint t, Renderer& r, Optimizer& o, Logbarrier_Initializer& li, cusolverDnHandle_t& handleDn,
+bool fit_3DMM_shape_rigid(uint t, Renderer& r, Optimizer& o, Logbarrier_Initializer& li, cusolverDnHandle_t& handleDn,
                           cublasHandle_t& handle, float *d_cropped_face, float *d_buffer_face,
                           OptimizationVariables &ov, OptimizationVariables &ov_linesearch, std::vector<Camera> & cams, RotationComputer &rc,
                           RotationComputer& rc_linesearch, DerivativeComputer &dc, Solver &s, float *d_tmp, bool visualize)
@@ -123,8 +124,10 @@ void fit_3DMM_shape_rigid(uint t, Renderer& r, Optimizer& o, Logbarrier_Initiali
 
     float tcoef_threshold = 0.075;
     if (ov.T > 1)
-	    tcoef_threshold = 0.003;
+	    tcoef_threshold = 0.001;
 
+    uint num_outer_iters = 0;
+    uint num_inner_iters = 0;
     for (uint tau_iter = 0; tau_iter<1; ++tau_iter)
     {
         bool terminate = false;
@@ -135,6 +138,7 @@ void fit_3DMM_shape_rigid(uint t, Renderer& r, Optimizer& o, Logbarrier_Initiali
 
         for (int i=0; i<100; ++i)
         {
+            num_outer_iters++;
             if (terminate)
                 break;
 
@@ -206,6 +210,7 @@ void fit_3DMM_shape_rigid(uint t, Renderer& r, Optimizer& o, Logbarrier_Initiali
 
             while (inner_iter < MAX_INNER_ITERS)
             {
+                num_inner_iters++;
 //                if (t_coef < 0.032f) {
                 if (t_coef < tcoef_threshold) {
                     terminate = true;
@@ -222,7 +227,8 @@ void fit_3DMM_shape_rigid(uint t, Renderer& r, Optimizer& o, Logbarrier_Initiali
                 cudaMemcpy(&cur_tz, ov_linesearch.tauz, sizeof(float), cudaMemcpyDeviceToHost);
 
                 if (cur_tz<0.0f) {
-                    std::cout << "__cur_tz: " << cur_tz << std::endl;
+                    if (config::PRINT_WARNINGS)
+                        std::cout << "__cur_tz: " << cur_tz << std::endl;
                     break;
                 }
 
@@ -243,12 +249,13 @@ void fit_3DMM_shape_rigid(uint t, Renderer& r, Optimizer& o, Logbarrier_Initiali
                     // <!-- We'll probably need to change the below --> use the right camera (e.g., cams[t])
                     bool is_face_reasonable = r.compute_nonrigid_shape2(handle, ov_linesearch, rc_linesearch.R, cams[t_inner]);
                     if (!is_face_reasonable) {
-                        std::cout << "face is too large! " << std::endl;
+                        if (config::PRINT_WARNINGS)
+                           std::cout << "face is too large! " << std::endl;
                         skip_because_nan = true;
                         break;
                     }
-                    r.compute_texture(handle, ov_linesearch, o);
-                    r.render(t_inner, o, ov_linesearch, rc_linesearch.R, handle, &N_unique_pixels, d_cropped_face, d_buffer_face, visualize); // #TIME_MODIFICATIONS - REMOVE/COMMENT THIS LINE
+                    // r.compute_texture(handle, ov_linesearch, o);
+                    // r.render(t_inner, o, ov_linesearch, rc_linesearch.R, handle, &N_unique_pixels, d_cropped_face, d_buffer_face, visualize); // #TIME_MODIFICATIONS - REMOVE/COMMENT THIS LINE
 
                     // We do this only if t_inner == 0 because the
                     // function li.evaluate_objective_function() takes care for all t=1:T
@@ -266,7 +273,7 @@ void fit_3DMM_shape_rigid(uint t, Renderer& r, Optimizer& o, Logbarrier_Initiali
                             cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, 1, 1, ov_linesearch.Kbeta, &plus_one_, li.vecOnes, 1, li.f_beta_ub, ov_linesearch.Kbeta, &plus_one_, d_obj_ineqs, 1);
                         }
 
-                        /* #TIME_MODIFICATIONS ?
+                        /* #TIME_MODIFICATIONS ? */
                         float h_obj_ineqs(0.0f);
                         cudaMemcpy(&h_obj_ineqs, d_obj_ineqs, sizeof(float), cudaMemcpyDeviceToHost);
                         if (isnan(h_obj_ineqs)) {
@@ -275,16 +282,18 @@ void fit_3DMM_shape_rigid(uint t, Renderer& r, Optimizer& o, Logbarrier_Initiali
                         }
                         /* #TIME_MODIFICATIONS? ^ */
 
-                        add_to_scalar_negated<<<1,1>>>(ov_linesearch.grad_corr,  d_obj_ineqs); // #TIME_MODIFICATIONS - REMOVE/COMMENT THIS LINE
+                        //add_to_scalar_negated<<<1,1>>>(ov_linesearch.grad_corr,  d_obj_ineqs); // #TIME_MODIFICATIONS - REMOVE/COMMENT THIS LINE
                         ov_linesearch.set_frame(t_inner);
                     }
 
+                    if (t_inner == 0) 
+                        r.compute_texture(handle, ov_linesearch, o);
                     // #TIME_MODIFICATIONS - BEGIN - PUT BACK THE FOLLOWING
-                    /*
                     r.render(t_inner, o, ov_linesearch, rc_linesearch.R, handle, &N_unique_pixels, d_cropped_face, d_buffer_face, false);
                     if (t_inner == 0) {
                         add_to_scalar_negated<<<1,1>>>(ov_linesearch.grad_corr,  d_obj_ineqs);
                     }
+                    /*
                     */
                 }
                 HANDLE_ERROR( cudaFree( d_obj_ineqs ) );
@@ -335,7 +344,602 @@ void fit_3DMM_shape_rigid(uint t, Renderer& r, Optimizer& o, Logbarrier_Initiali
     }
 
     HANDLE_ERROR( cudaFree(logbarrier_multi_coef) );
+
+    return num_outer_iters > 6;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+bool fit_3DMM_epsilon_finetune(uint t, Renderer& r, Optimizer& o, Logbarrier_Initializer& li, cusolverDnHandle_t& handleDn,
+                          cublasHandle_t& handle, float *d_cropped_face, float *d_buffer_face,
+                          OptimizationVariables &ov, OptimizationVariables &ov_linesearch, std::vector<Camera> & cams, RotationComputer &rc,
+                          RotationComputer& rc_linesearch, DerivativeComputer &dc, Solver &s, float *d_tmp, bool visualize)
+{
+
+    ////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
+
+    HANDLE_ERROR( cudaMemcpy( li.epsilon_lb, li.epsilon_lb_finetune, sizeof(float)*ov.Kepsilon, cudaMemcpyDeviceToDevice ) );
+    HANDLE_ERROR( cudaMemcpy( li.epsilon_ub, li.epsilon_ub_finetune, sizeof(float)*ov.Kepsilon, cudaMemcpyDeviceToDevice ) );
+
+
+    ov.set_frame(t);
+    ov_linesearch.set_frame(t);
+
+    rc.set_u_ptr(ov.u);
+    rc_linesearch.set_u_ptr(ov_linesearch.u);
+
+    ushort N_unique_pixels;
+
+    float plus_one_ = 1.0f;
+    float h_searchdir_0;
+
+    float yummymulti[] = {5.0f}; //  {10.0f};
+    float yummy[1] = {5.0f}; // {10.0f};
+
+    float alpha_ = 1.0f;
+    float beta_ = 0.0f;
+
+    cudaMemcpy(ov.tau_logbarrier, yummy, sizeof(float), cudaMemcpyHostToDevice);
+
+    float *logbarrier_multi_coef;
+    HANDLE_ERROR( cudaMalloc( (void**)&logbarrier_multi_coef, sizeof(float)) );
+    cudaMemcpy(logbarrier_multi_coef, yummymulti, sizeof(float), cudaMemcpyHostToDevice);
+
+    float tcoef_threshold = 0.075;
+    if (ov.T > 1)
+        tcoef_threshold = 0.001;
+
+    uint num_outer_iters = 0;
+    uint num_inner_iters = 0;
+    for (uint tau_iter = 0; tau_iter<1; ++tau_iter)
+    {
+        bool terminate = false;
+        cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, 1, 1, 1, &alpha_, ov.tau_logbarrier, 1, logbarrier_multi_coef, 1, &beta_, ov.tau_logbarrier, 1);
+        cudaMemcpy(ov_linesearch.tau_logbarrier, ov.tau_logbarrier, sizeof(float), cudaMemcpyDeviceToDevice);
+
+        //        std::cout << "TAU_ITER" << tau_iter << std::endl;
+
+        for (int i=0; i<100; ++i)
+        {
+            num_outer_iters++;
+            if (terminate)
+                break;
+
+#ifdef MEASURE_TIME
+            cudaEvent_t start, stop;
+            cudaEventCreate( &start );
+            cudaEventCreate( &stop );
+            cudaEventRecord( start, 0 );
+#endif
+            get_obj_hessian_and_gradient_multiframe(r, o, li, handle,
+                                                    d_cropped_face, d_buffer_face, ov, cams, rc, dc,
+                                                    N_unique_pixels, false);
+#ifdef MEASURE_TIME
+            cudaEventRecord( stop, 0 );
+            cudaEventSynchronize( stop );
+
+            float   elapsedTime_t;
+            cudaEventElapsedTime( &elapsedTime_t, start, stop );
+            printf( "TM_Hessian_computation= time %.2f ms\n", elapsedTime_t);
+#endif
+
+#ifdef MEASURE_TIME
+            cudaEventCreate( &start );
+            cudaEventCreate( &stop );
+            cudaEventRecord( start, 0 );
+#endif
+            copyMatsFloatToDouble<<<(s.n*s.n+NTHREADS-1)/NTHREADS, NTHREADS>>>(o.JTJ, o.dG_dtheta, s.JTJ, s.dG_dtheta, s.n);
+            bool solve_success = s.solve(handleDn);
+#ifdef MEASURE_TIME
+            cudaEventRecord( stop, 0 );
+            cudaEventSynchronize( stop );
+
+            cudaEventElapsedTime( &elapsedTime_t, start, stop );
+            printf( "TM_solve_system = time %.2f ms\n", elapsedTime_t);
+#endif
+
+            cudaMemcpy(&h_searchdir_0, s.search_dir, sizeof(float), cudaMemcpyDeviceToHost);
+
+            if (isnan(h_searchdir_0)) {
+                if (config::PRINT_WARNINGS)
+                    std::cout << "was NAN at iteration# " << i << std::endl;
+                //std::cout << "\t This is most likely caused by some denominators in compute_Gs() function being too close to zero." << std::endl;
+                //std::cout << "\t However, this is doesn't affect results much and happens rarely enough to not make this a priority for now." << std::endl;
+                terminate = true;
+                break;
+            }
+
+            float t_coef = 1.0f;
+            //float ALPHA = 0.2; // 0.4f; #TIME_MODIFICATIONS
+            //float BETA = 0.33; // 0.5f; #TIME_MODIFICATIONS
+
+            float ALPHA = 0.4f; // #TIME_MODIFICATIONS
+            float BETA = 0.8f; //#TIME_MODIFICATIONS
+
+            const uint MAX_INNER_ITERS = 100;
+            uint inner_iter = 0;
+
+            float obj[1], obj_tmp[1];
+            cudaMemcpy(obj, ov.grad_corr, sizeof(float), cudaMemcpyDeviceToHost);
+            obj[0] = -obj[0];
+
+#ifdef MEASURE_TIME
+            cudaEventCreate( &start );
+            cudaEventCreate( &stop );
+            cudaEventRecord( start, 0 );
+#endif
+            //		break;
+            float lambda2[1];
+
+            while (inner_iter < MAX_INNER_ITERS)
+            {
+                num_inner_iters++;
+//                if (t_coef < 0.032f) {
+                if (t_coef < tcoef_threshold) {
+                    terminate = true;
+                    break;
+                }
+
+                bool skip_because_nan = false;
+
+                set_xtmp<<<((ov.Ktotal-6)+NTHREADS-1)/NTHREADS, NTHREADS>>>(s.search_dir, ov.betas, t_coef, ov_linesearch.betas, ov_linesearch.Ktotal-6);
+                cudaMemset(ov_linesearch.grad_corr, 0, sizeof(float));
+
+                float cur_tz;
+
+                cudaMemcpy(&cur_tz, ov_linesearch.tauz, sizeof(float), cudaMemcpyDeviceToHost);
+
+                if (cur_tz<0.0f) {
+                    std::cout << "__cur_tz: " << cur_tz << std::endl;
+                    break;
+                }
+
+
+                float *d_obj_ineqs;
+                HANDLE_ERROR(cudaMalloc((void**)&d_obj_ineqs, sizeof(float)*1));
+                cudaMemset(d_obj_ineqs, 0, sizeof(float));
+
+                for (size_t t_inner=0; t_inner<ov.T; ++t_inner)
+                {
+                    if (skip_because_nan)
+                        break;
+
+                    ov_linesearch.set_frame(t_inner);
+                    rc_linesearch.set_u_ptr(ov_linesearch.u);
+                    rc_linesearch.process_without_derivatives();
+
+                    // <!-- We'll probably need to change the below --> use the right camera (e.g., cams[t])
+                    bool is_face_reasonable = r.compute_nonrigid_shape2(handle, ov_linesearch, rc_linesearch.R, cams[t_inner]);
+                    if (!is_face_reasonable) {
+                        std::cout << "face is too large! " << std::endl;
+                        skip_because_nan = true;
+                        break;
+                    }
+                    // r.compute_texture(handle, ov_linesearch, o);
+                    // r.render(t_inner, o, ov_linesearch, rc_linesearch.R, handle, &N_unique_pixels, d_cropped_face, d_buffer_face, visualize); // #TIME_MODIFICATIONS - REMOVE/COMMENT THIS LINE
+
+                    // We do this only if t_inner == 0 because the
+                    // function li.evaluate_objective_function() takes care for all t=1:T
+                    if (t_inner == 0 && dc.use_inequalities)
+                    {
+                        cudaMemset(d_obj_ineqs, 0, sizeof(float));
+                        li.evaluate_objective_function(handle, &ov_linesearch, d_obj_ineqs);
+
+                        if (dc.use_texture)
+                        {
+                            neglogify<<<(ov_linesearch.Kbeta+NTHREADS-1)/NTHREADS, NTHREADS>>>(li.f_beta_ub, ov_linesearch.Kbeta);
+                            neglogify<<<(ov_linesearch.Kbeta+NTHREADS-1)/NTHREADS, NTHREADS>>>(li.f_beta_lb, ov_linesearch.Kbeta);
+
+                            cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, 1, 1, ov_linesearch.Kbeta, &plus_one_, li.vecOnes, 1, li.f_beta_lb, ov_linesearch.Kbeta, &plus_one_, d_obj_ineqs, 1);
+                            cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, 1, 1, ov_linesearch.Kbeta, &plus_one_, li.vecOnes, 1, li.f_beta_ub, ov_linesearch.Kbeta, &plus_one_, d_obj_ineqs, 1);
+                        }
+
+                        /* #TIME_MODIFICATIONS ? */
+                        float h_obj_ineqs(0.0f);
+                        cudaMemcpy(&h_obj_ineqs, d_obj_ineqs, sizeof(float), cudaMemcpyDeviceToHost);
+                        if (isnan(h_obj_ineqs)) {
+                            skip_because_nan = true;
+                            break;
+                        }
+                        /* #TIME_MODIFICATIONS? ^ */
+
+                        //add_to_scalar_negated<<<1,1>>>(ov_linesearch.grad_corr,  d_obj_ineqs); // #TIME_MODIFICATIONS - REMOVE/COMMENT THIS LINE
+                        ov_linesearch.set_frame(t_inner);
+                    }
+
+                    if (t_inner == 0)
+                        r.compute_texture(handle, ov_linesearch, o);
+                    // #TIME_MODIFICATIONS - BEGIN - PUT BACK THE FOLLOWING
+                    r.render(t_inner, o, ov_linesearch, rc_linesearch.R, handle, &N_unique_pixels, d_cropped_face, d_buffer_face, false);
+                    if (t_inner == 0) {
+                        add_to_scalar_negated<<<1,1>>>(ov_linesearch.grad_corr,  d_obj_ineqs);
+                    }
+                    /*
+                    */
+                }
+                HANDLE_ERROR( cudaFree( d_obj_ineqs ) );
+
+                if (skip_because_nan) {
+                    t_coef = t_coef * BETA;
+                    continue;
+                }
+
+                cudaMemcpy(obj_tmp, ov_linesearch.grad_corr, sizeof(float), cudaMemcpyDeviceToHost);
+
+                obj_tmp[0] = -obj_tmp[0];
+
+                inner_iter++;
+                cublasSdot(handle, ov.Ktotal, s.search_dir, 1, o.dG_dtheta, 1, d_tmp);
+
+                cudaMemcpy(lambda2, d_tmp, sizeof(float), cudaMemcpyDeviceToHost);
+                //                if (false) { // (-lambda2[0] < 0.0003) {
+                if (-lambda2[0] < 0.0003) {
+                    terminate = true;
+                    break;
+                }
+                lambda2[0] *= ALPHA*t_coef;
+
+                if (obj_tmp[0]  < obj[0] + lambda2[0]) {
+                    cudaMemcpy(ov.betas, ov_linesearch.betas, sizeof(float)*ov.Ktotal, cudaMemcpyDeviceToDevice);
+                    //std::cout << '#' << i << ": "<< t_coef << '\t' <<"obj vs obj_tmp \t" << obj[0] << '\t' << obj_tmp[0] << std::endl;
+                    break;
+                } else {
+                    //std::cout << "\t\t t_coef:"  << t_coef <<"  obj vs obj_tmp \t" << obj[0] << '\t' << obj_tmp[0] << std::endl;
+                }
+                t_coef = t_coef * BETA;
+                //			break;
+            }
+
+#ifdef MEASURE_TIME
+            cudaEventRecord( stop, 0 );
+            cudaEventSynchronize( stop );
+
+            cudaEventElapsedTime( &elapsedTime_t, start, stop );
+            printf( "TM_linesearch = time %.2f ms\n", elapsedTime_t);
+#endif
+        }
+    }
+
+    if (visualize) {
+        r.render(0, o, ov_linesearch, rc_linesearch.R, handle, &N_unique_pixels, d_cropped_face, d_buffer_face,  true);
+    }
+
+    HANDLE_ERROR( cudaFree(logbarrier_multi_coef) );
+
+    HANDLE_ERROR( cudaMemcpy( li.epsilon_lb, li.epsilon_lb_regular, sizeof(float)*ov.Kepsilon, cudaMemcpyDeviceToDevice ) );
+    HANDLE_ERROR( cudaMemcpy( li.epsilon_ub, li.epsilon_ub_regular, sizeof(float)*ov.Kepsilon, cudaMemcpyDeviceToDevice ) );
+
+    return num_outer_iters > 6;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+bool fit_3DMM_rigid_alone(uint t, Renderer& r, Optimizer& o, Logbarrier_Initializer& li, cusolverDnHandle_t& handleDn,
+                          cublasHandle_t& handle, float *d_cropped_face, float *d_buffer_face,
+                          OptimizationVariables &ov, OptimizationVariables &ov_linesearch, std::vector<Camera> & cams, RotationComputer &rc,
+                          RotationComputer& rc_linesearch, DerivativeComputer &dc, Solver &s, float *d_tmp, bool visualize)
+{
+
+    ////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
+
+    HANDLE_ERROR( cudaMemcpy( li.epsilon_lb, li.epsilon_lb_finetune, sizeof(float)*ov.Kepsilon, cudaMemcpyDeviceToDevice ) );
+    HANDLE_ERROR( cudaMemcpy( li.epsilon_ub, li.epsilon_ub_finetune, sizeof(float)*ov.Kepsilon, cudaMemcpyDeviceToDevice ) );
+
+
+    ov.set_frame(t);
+    ov_linesearch.set_frame(t);
+
+    rc.set_u_ptr(ov.u);
+    rc_linesearch.set_u_ptr(ov_linesearch.u);
+
+    ushort N_unique_pixels;
+
+    float plus_one_ = 1.0f;
+    float h_searchdir_0;
+
+    float yummymulti[] = {5.0f}; //  {10.0f};
+    float yummy[1] = {5.0f}; // {10.0f};
+
+    float alpha_ = 1.0f;
+    float beta_ = 0.0f;
+
+    cudaMemcpy(ov.tau_logbarrier, yummy, sizeof(float), cudaMemcpyHostToDevice);
+
+    float *logbarrier_multi_coef;
+    HANDLE_ERROR( cudaMalloc( (void**)&logbarrier_multi_coef, sizeof(float)) );
+    cudaMemcpy(logbarrier_multi_coef, yummymulti, sizeof(float), cudaMemcpyHostToDevice);
+
+    float tcoef_threshold = 0.075;
+    if (ov.T > 1)
+        tcoef_threshold = 0.001;
+
+    uint num_outer_iters = 0;
+    uint num_inner_iters = 0;
+    for (uint tau_iter = 0; tau_iter<1; ++tau_iter)
+    {
+        bool terminate = false;
+        cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, 1, 1, 1, &alpha_, ov.tau_logbarrier, 1, logbarrier_multi_coef, 1, &beta_, ov.tau_logbarrier, 1);
+        cudaMemcpy(ov_linesearch.tau_logbarrier, ov.tau_logbarrier, sizeof(float), cudaMemcpyDeviceToDevice);
+
+        //        std::cout << "TAU_ITER" << tau_iter << std::endl;
+
+        for (int i=0; i<100; ++i)
+        {
+            num_outer_iters++;
+            if (terminate)
+                break;
+
+#ifdef MEASURE_TIME
+            cudaEvent_t start, stop;
+            cudaEventCreate( &start );
+            cudaEventCreate( &stop );
+            cudaEventRecord( start, 0 );
+#endif
+            get_obj_hessian_and_gradient_multiframe(r, o, li, handle,
+                                                    d_cropped_face, d_buffer_face, ov, cams, rc, dc,
+                                                    N_unique_pixels, false);
+#ifdef MEASURE_TIME
+            cudaEventRecord( stop, 0 );
+            cudaEventSynchronize( stop );
+
+            float   elapsedTime_t;
+            cudaEventElapsedTime( &elapsedTime_t, start, stop );
+            printf( "TM_Hessian_computation= time %.2f ms\n", elapsedTime_t);
+#endif
+
+#ifdef MEASURE_TIME
+            cudaEventCreate( &start );
+            cudaEventCreate( &stop );
+            cudaEventRecord( start, 0 );
+#endif
+            copyMatsFloatToDouble<<<(s.n*s.n+NTHREADS-1)/NTHREADS, NTHREADS>>>(o.JTJ, o.dG_dtheta, s.JTJ, s.dG_dtheta, s.n);
+            bool solve_success = s.solve(handleDn);
+#ifdef MEASURE_TIME
+            cudaEventRecord( stop, 0 );
+            cudaEventSynchronize( stop );
+
+            cudaEventElapsedTime( &elapsedTime_t, start, stop );
+            printf( "TM_solve_system = time %.2f ms\n", elapsedTime_t);
+#endif
+
+            cudaMemcpy(&h_searchdir_0, s.search_dir, sizeof(float), cudaMemcpyDeviceToHost);
+
+            if (isnan(h_searchdir_0)) {
+                if (config::PRINT_WARNINGS)
+                    std::cout << "was NAN at iteration# " << i << std::endl;
+                //std::cout << "\t This is most likely caused by some denominators in compute_Gs() function being too close to zero." << std::endl;
+                //std::cout << "\t However, this is doesn't affect results much and happens rarely enough to not make this a priority for now." << std::endl;
+                terminate = true;
+                break;
+            }
+
+            float t_coef = 1.0f;
+            //float ALPHA = 0.2; // 0.4f; #TIME_MODIFICATIONS
+            //float BETA = 0.33; // 0.5f; #TIME_MODIFICATIONS
+
+            float ALPHA = 0.4f; // #TIME_MODIFICATIONS
+            float BETA = 0.8f; //#TIME_MODIFICATIONS
+
+            const uint MAX_INNER_ITERS = 100;
+            uint inner_iter = 0;
+
+            float obj[1], obj_tmp[1];
+            cudaMemcpy(obj, ov.grad_corr, sizeof(float), cudaMemcpyDeviceToHost);
+            obj[0] = -obj[0];
+
+#ifdef MEASURE_TIME
+            cudaEventCreate( &start );
+            cudaEventCreate( &stop );
+            cudaEventRecord( start, 0 );
+#endif
+            //		break;
+            float lambda2[1];
+
+            while (inner_iter < MAX_INNER_ITERS)
+            {
+                num_inner_iters++;
+//                if (t_coef < 0.032f) {
+                if (t_coef < tcoef_threshold) {
+                    terminate = true;
+                    break;
+                }
+
+                bool skip_because_nan = false;
+
+                set_xtmp<<<((6)+NTHREADS-1)/NTHREADS, NTHREADS>>>(s.search_dir+ov.Kepsilon, ov.betas+ov.Kepsilon, t_coef, ov_linesearch.betas+ov.Kepsilon, 6);
+                cudaMemset(ov_linesearch.grad_corr, 0, sizeof(float));
+
+                float cur_tz;
+
+                cudaMemcpy(&cur_tz, ov_linesearch.tauz, sizeof(float), cudaMemcpyDeviceToHost);
+
+                if (cur_tz<0.0f) {
+                    if (config::PRINT_WARNINGS)
+                       std::cout << "__cur_tz: " << cur_tz << std::endl;
+                    break;
+                }
+
+
+                float *d_obj_ineqs;
+                HANDLE_ERROR(cudaMalloc((void**)&d_obj_ineqs, sizeof(float)*1));
+                cudaMemset(d_obj_ineqs, 0, sizeof(float));
+
+                for (size_t t_inner=0; t_inner<ov.T; ++t_inner)
+                {
+                    if (skip_because_nan)
+                        break;
+
+                    ov_linesearch.set_frame(t_inner);
+                    rc_linesearch.set_u_ptr(ov_linesearch.u);
+                    rc_linesearch.process_without_derivatives();
+
+                    // <!-- We'll probably need to change the below --> use the right camera (e.g., cams[t])
+                    bool is_face_reasonable = r.compute_nonrigid_shape2(handle, ov_linesearch, rc_linesearch.R, cams[t_inner]);
+                    if (!is_face_reasonable) {
+                        std::cout << "face is too large! " << std::endl;
+                        skip_because_nan = true;
+                        break;
+                    }
+                    // r.compute_texture(handle, ov_linesearch, o);
+                    // r.render(t_inner, o, ov_linesearch, rc_linesearch.R, handle, &N_unique_pixels, d_cropped_face, d_buffer_face, visualize); // #TIME_MODIFICATIONS - REMOVE/COMMENT THIS LINE
+
+                    // We do this only if t_inner == 0 because the
+                    // function li.evaluate_objective_function() takes care for all t=1:T
+                    if (t_inner == 0 && dc.use_inequalities)
+                    {
+                        cudaMemset(d_obj_ineqs, 0, sizeof(float));
+                        li.evaluate_objective_function(handle, &ov_linesearch, d_obj_ineqs);
+
+                        if (dc.use_texture)
+                        {
+                            neglogify<<<(ov_linesearch.Kbeta+NTHREADS-1)/NTHREADS, NTHREADS>>>(li.f_beta_ub, ov_linesearch.Kbeta);
+                            neglogify<<<(ov_linesearch.Kbeta+NTHREADS-1)/NTHREADS, NTHREADS>>>(li.f_beta_lb, ov_linesearch.Kbeta);
+
+                            cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, 1, 1, ov_linesearch.Kbeta, &plus_one_, li.vecOnes, 1, li.f_beta_lb, ov_linesearch.Kbeta, &plus_one_, d_obj_ineqs, 1);
+                            cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, 1, 1, ov_linesearch.Kbeta, &plus_one_, li.vecOnes, 1, li.f_beta_ub, ov_linesearch.Kbeta, &plus_one_, d_obj_ineqs, 1);
+                        }
+
+                        /* #TIME_MODIFICATIONS ? */
+                        float h_obj_ineqs(0.0f);
+                        cudaMemcpy(&h_obj_ineqs, d_obj_ineqs, sizeof(float), cudaMemcpyDeviceToHost);
+                        if (isnan(h_obj_ineqs)) {
+                            skip_because_nan = true;
+                            break;
+                        }
+                        /* #TIME_MODIFICATIONS? ^ */
+
+                        //add_to_scalar_negated<<<1,1>>>(ov_linesearch.grad_corr,  d_obj_ineqs); // #TIME_MODIFICATIONS - REMOVE/COMMENT THIS LINE
+                        ov_linesearch.set_frame(t_inner);
+                    }
+
+                    if (t_inner == 0)
+                        r.compute_texture(handle, ov_linesearch, o);
+                    // #TIME_MODIFICATIONS - BEGIN - PUT BACK THE FOLLOWING
+                    r.render(t_inner, o, ov_linesearch, rc_linesearch.R, handle, &N_unique_pixels, d_cropped_face, d_buffer_face, false);
+                    if (t_inner == 0) {
+                        add_to_scalar_negated<<<1,1>>>(ov_linesearch.grad_corr,  d_obj_ineqs);
+                    }
+                    /*
+                    */
+                }
+                HANDLE_ERROR( cudaFree( d_obj_ineqs ) );
+
+                if (skip_because_nan) {
+                    t_coef = t_coef * BETA;
+                    continue;
+                }
+
+                cudaMemcpy(obj_tmp, ov_linesearch.grad_corr, sizeof(float), cudaMemcpyDeviceToHost);
+
+                obj_tmp[0] = -obj_tmp[0];
+
+                inner_iter++;
+                cublasSdot(handle, ov.Ktotal, s.search_dir, 1, o.dG_dtheta, 1, d_tmp);
+
+                cudaMemcpy(lambda2, d_tmp, sizeof(float), cudaMemcpyDeviceToHost);
+                //                if (false) { // (-lambda2[0] < 0.0003) {
+                if (-lambda2[0] < 0.0003) {
+                    terminate = true;
+                    break;
+                }
+                lambda2[0] *= ALPHA*t_coef;
+
+                if (obj_tmp[0]  < obj[0] + lambda2[0]) {
+                    cudaMemcpy(ov.betas, ov_linesearch.betas, sizeof(float)*ov.Ktotal, cudaMemcpyDeviceToDevice);
+                    //std::cout << '#' << i << ": "<< t_coef << '\t' <<"obj vs obj_tmp \t" << obj[0] << '\t' << obj_tmp[0] << std::endl;
+                    break;
+                } else {
+                    //std::cout << "\t\t t_coef:"  << t_coef <<"  obj vs obj_tmp \t" << obj[0] << '\t' << obj_tmp[0] << std::endl;
+                }
+                t_coef = t_coef * BETA;
+                //			break;
+            }
+
+#ifdef MEASURE_TIME
+            cudaEventRecord( stop, 0 );
+            cudaEventSynchronize( stop );
+
+            cudaEventElapsedTime( &elapsedTime_t, start, stop );
+            printf( "TM_linesearch = time %.2f ms\n", elapsedTime_t);
+#endif
+        }
+    }
+
+    if (visualize) {
+        r.render(0, o, ov_linesearch, rc_linesearch.R, handle, &N_unique_pixels, d_cropped_face, d_buffer_face,  true);
+    }
+
+    HANDLE_ERROR( cudaFree(logbarrier_multi_coef) );
+
+    HANDLE_ERROR( cudaMemcpy( li.epsilon_lb, li.epsilon_lb_regular, sizeof(float)*ov.Kepsilon, cudaMemcpyDeviceToDevice ) );
+    HANDLE_ERROR( cudaMemcpy( li.epsilon_ub, li.epsilon_ub_regular, sizeof(float)*ov.Kepsilon, cudaMemcpyDeviceToDevice ) );
+
+    return num_outer_iters > 6;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -719,6 +1323,9 @@ bool fit_to_multi_images(std::vector<Camera> &cams,
 
         cv::cvtColor(frames[t], inputImage, cv::COLOR_BGR2GRAY);
 
+        if (config::PAINT_INNERMOUTH_BLACK)
+            paint_innermouth_black(inputImage, all_xps[t], all_yps[t]);
+
         inputImage.convertTo(inputImage, CV_32FC1);
         inputImage = inputImage/255.0f;
 
@@ -762,7 +1369,7 @@ bool fit_to_multi_images(std::vector<Camera> &cams,
     ov.set_frame(0);
     ov_linesearch.set_frame(0);
 
-    fit_3DMM_shape_rigid(0, r, o, li, handleDn, handle, d_cropped_face, d_buffer_face, ov, ov_linesearch, cams, rc, rc_linesearch, dc, s, d_tmp, false);
+    bool rigid_success = fit_3DMM_shape_rigid(0, r, o, li, handleDn, handle, d_cropped_face, d_buffer_face, ov, ov_linesearch, cams, rc, rc_linesearch, dc, s, d_tmp, false);
 
     ov.set_frame(0);
     rc.set_u_ptr(ov.u);
@@ -837,7 +1444,7 @@ bool fit_to_multi_images(std::vector<Camera> &cams,
         }
     }
 
-    return true;
+    return rigid_success;
 }
 
 
@@ -1202,6 +1809,13 @@ bool fit_to_video_frame(float *xp_orig, float *yp_orig, std::vector<float>& xran
 
     cv::Mat inputImage;
     cv::cvtColor(inputImage_color, inputImage, cv::COLOR_BGR2GRAY);
+
+    if (config::PAINT_INNERMOUTH_BLACK) {
+        std::vector<float> xp_vec(xp_orig, xp_orig+NLANDMARKS_51);
+        std::vector<float> yp_vec(yp_orig, yp_orig+NLANDMARKS_51);
+        paint_innermouth_black(inputImage, xp_vec, yp_vec);
+    }
+
 
 
     inputImage.convertTo(inputImage, CV_32FC1);

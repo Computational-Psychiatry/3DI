@@ -91,7 +91,9 @@ struct Logbarrier_Initializer
 
 	float *beta_lb, *beta_ub;
 	float *alpha_lb, *alpha_ub;
-	float *epsilon_lb, *epsilon_ub;
+    float *epsilon_lb, *epsilon_ub;
+    float *epsilon_lb_finetune, *epsilon_ub_finetune;
+    float *epsilon_lb_regular, *epsilon_ub_regular;
 
 	float *f_beta_lb, *f_beta_ub;
 	float *f_alpha_lb, *f_alpha_ub;

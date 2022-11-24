@@ -76,6 +76,8 @@ std::pair<std::vector<float>, std::vector<float>> compute_landmarks_wlocal_model
                                                                                   std::vector<float>& xp_vec0, std::vector<float>& yp_vec0, cv::Mat& part,
                                                                                   Net& leye_net, Net& reye_net, Net& mouth_net, double tx_rate, double ty_rate);
 
+void paint_innermouth_black(cv::Mat& frame, const std::vector<float>& xp_vec, const std::vector<float>& yp_vec);
+
 Point2f transform_pt(float px, float py, const cv::Point2f* center, float* scale, float* resolution, bool invert = false);
 
 void heatmaps_to_landmarks(cv::Mat* netOut, cv::Mat* netOut_flipped,

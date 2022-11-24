@@ -53,6 +53,17 @@ float compute_face_size(const float* xp, const float* yp)
     return std::max<float>(maxx-minx, maxy-miny);
 }
 
+float compute_face_diagonal(const float* xp, const float* yp)
+{
+    float minx = *std::min_element(xp, xp + NLANDMARKS_51);
+    float miny = *std::min_element(yp, yp + NLANDMARKS_51);
+
+    float maxx = *std::max_element(xp, xp + NLANDMARKS_51);
+    float maxy = *std::max_element(yp, yp + NLANDMARKS_51);
+
+    return std::sqrt((maxx-minx)*(maxx-minx)+(maxy-miny)*(maxy-miny));
+}
+
 vector<string> str_split (const string &s, char delim) {
     vector<string> result;
     std::stringstream ss (s);
@@ -64,6 +75,8 @@ vector<string> str_split (const string &s, char delim) {
 
     return result;
 }
+
+
 
 
 __global__ void fill_ks_and_M0(
@@ -326,7 +339,7 @@ __global__ void set_xtmp(const float* search_dir, const float *x,  float t_coef_
 
     const uint n = colix + rowix*blockDim.x;
 
-    if (n > Ktotal)
+    if (n >= Ktotal)
         return;
 
     __shared__ float t_coef[1];

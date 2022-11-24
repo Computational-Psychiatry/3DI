@@ -14,8 +14,9 @@
 
 //#define NTMP 9
 //#define NTMP 12
-#define NTMP 3 // <----
+//#define NTMP 3 // <----
 //#define NTMP 5
+#define NTMP 4
 //#define NTMP 7 // this is too large but we'll use it for dyadic sync analyses. Otherwise we'll probably go back to NTMP=3
 //#define NTMP 2
 //#define NTMP 1
@@ -46,8 +47,8 @@ const uint Nredundant = N_TRIANGLES*NTMP;
 //const uint Nrender_estimated = 25000;
 //const uint Nrender_estimated = 16000;
 //const uint Nrender_estimated = 26000;
-//const uint Nrender_estimated = 32000; // this is too large but we'll use it for dyadic sync analyses. Otherwise we'll probably go back to something like 16000
-const uint Nrender_estimated = 10000;
+const uint Nrender_estimated = 32000; // this is too large but we'll use it for dyadic sync analyses. Otherwise we'll probably go back to something like 16000
+//const uint Nrender_estimated = 10000;
 //const uint Nrender_estimated = 8500;
 //const uint Nrender_estimated = 6000;
 

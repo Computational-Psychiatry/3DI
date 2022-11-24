@@ -26,7 +26,7 @@
 extern float RESIZE_COEF;
 
 
-void fit_3DMM_shape_rigid(uint t, Renderer& r, Optimizer& o, Logbarrier_Initializer& li, cusolverDnHandle_t& handleDn,
+bool fit_3DMM_shape_rigid(uint t, Renderer& r, Optimizer& o, Logbarrier_Initializer& li, cusolverDnHandle_t& handleDn,
         cublasHandle_t& handle, float *d_cropped_face, float *d_buffer_face,
         OptimizationVariables &ov, OptimizationVariables &ov_linesearch, std::vector<Camera> &cams, RotationComputer &rc,
         RotationComputer& rc_linesearch, DerivativeComputer &dc, Solver &s,  float *d_tmp, bool visualize);
@@ -73,6 +73,15 @@ void fit_3DMM_lambdas(uint t, Renderer& r, Optimizer& o, cusolverDnHandle_t& han
         RotationComputer& rc_linesearch, DerivativeComputer &dc, Solver &s_lambda,  float *d_tmp,
         bool visualize, bool initialize_texture);
 
+bool fit_3DMM_epsilon_finetune(uint t, Renderer& r, Optimizer& o, Logbarrier_Initializer& li, cusolverDnHandle_t& handleDn,
+                          cublasHandle_t& handle, float *d_cropped_face, float *d_buffer_face,
+                          OptimizationVariables &ov, OptimizationVariables &ov_linesearch, std::vector<Camera> & cams, RotationComputer &rc,
+                          RotationComputer& rc_linesearch, DerivativeComputer &dc, Solver &s, float *d_tmp, bool visualize);
+
+bool fit_3DMM_rigid_alone(uint t, Renderer& r, Optimizer& o, Logbarrier_Initializer& li, cusolverDnHandle_t& handleDn,
+                          cublasHandle_t& handle, float *d_cropped_face, float *d_buffer_face,
+                          OptimizationVariables &ov, OptimizationVariables &ov_linesearch, std::vector<Camera> & cams, RotationComputer &rc,
+                          RotationComputer& rc_linesearch, DerivativeComputer &dc, Solver &s, float *d_tmp, bool visualize);
 
 bool fit_to_multi_images_landmarks_only(const std::vector<std::vector<float> >& all_xps, const std::vector<std::vector<float> >& all_yps,
                                         const std::vector<std::vector<float> > &all_xranges, const std::vector<std::vector<float> > &all_yranges,

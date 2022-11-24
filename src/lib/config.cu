@@ -3,14 +3,15 @@
 #include <sstream>
 #include <iomanip>
 #include <iostream>
+#include <set>
 #include "config.h"
 
 namespace config
 {
-    double OPTS_DELTA = 0.5;
-    double OPTS_DELTA_BETA = 1.5;
+    double OPTS_DELTA = 0.6;
+    double OPTS_DELTA_BETA = 2.0;
 
-    double REF_FACE_SIZE = 92; //120; // 84;
+    double REF_FACE_SIZE = 86; //120; // 84;
 //    double RESIZE_COEF = 0.50;
 
     double CONFIDENCE_RANGE = 0.42;
@@ -19,32 +20,37 @@ namespace config
     bool IGNORE_NOSE = false;
 
     int NPERMS = 10; // number of permutations of random frames used to estimate identity
-    int NMAX_FRAMES = 700;
-    int NTOT_RECONSTRS = 12; // 6; // 10; //10;
-    int OUTPUT_IDENTITY = 1;
-    int OUTPUT_VISUALS = 1;
+    int NMAX_FRAMES = 3500;
+    int NTOT_RECONSTRS = 6; // 6; // 10; //10;
+    int OUTPUT_IDENTITY = 0;
+    int OUTPUT_VISUALS = 0;
+    int OUTPUT_FACIAL_PARTS = 0;
+    int OUTPUT_LANDMARKS_EXP_VARIATION = 0;
+    int OUTPUT_EXPRESSIONS = 0;
+    int OUTPUT_EXPRESSIONS_ALL = 0;
+    int OUTPUT_POSES = 0;
 
-    int NMULTICOMBS = 12; //5; //15; // Landmark
-    int NSMOOTH_FRAMES = 4;
-    int NRES_COEFS = 12; // 8; // spatial random resizing ;
+    int NMULTICOMBS = 4; //5; //15; // Landmark
+    int NSMOOTH_FRAMES = 1;
+    int NRES_COEFS = 4; // 8; // spatial random resizing ;
     int SINGLE_LANDMARKS = 0;
     int PAD_RENDERING = 1;
 
-    int NFRAMES = 9;
+    int NFRAMES = 7;
     int SIGMAS_FILE = 0;
 
-    int IGNORE_SOME_LANDMARKS = 1;
+    int IGNORE_SOME_LANDMARKS = 0;
 
     int PAD_SINGLE_IMAGE = 0;
 
     int USE_LOCAL_MODELS = 1;
     int USE_CONSTANT_BOUNDS = 0;
 
-    float SKIP_FIRST_N_SECS = 15.0;
-    float KERNEL_SIGMA = 1.0f;
+    float SKIP_FIRST_N_SECS = 0.0f;
+    float KERNEL_SIGMA = 0.5f;
     int SAVE_RECONSTRUCTIONS = 0;
 
-    int MAX_VID_FRAMES_TO_PROCESS = 3000;
+    int MAX_VID_FRAMES_TO_PROCESS = 50000;
 
     // Which expression component to use.
     // if -1, then all components are used,
@@ -52,41 +58,42 @@ namespace config
     int USE_EXPR_COMPONENT = -1;
 
     bool L2_TRAIN_MODE = false;
-    bool USE_TEMP_SMOOTHING = true;
-    bool USE_EXP_REGULARIZATION = true;
+    bool USE_TEMP_SMOOTHING = false;
+    bool USE_EXP_REGULARIZATION = false;
 
     bool EXPR_UNIFORM_REG = false;
 
-    float EXPR_L2_WEIGHT = 0.75f;
-    float DEXPR_L2_WEIGHT = 7.5f;
-    float DPOSE_L2_WEIGHT = 5.0f;
+    float EXPR_L2_WEIGHT = 0.5f;
+    float DEXPR_L2_WEIGHT = 0.00025f;
+    float DPOSE_L2_WEIGHT = 0.0001f;
 
-    float EVERY_N_SECS = 1.0f;
-    int TIME_T = 4;
+    float EVERY_N_SECS = 1.5f;
+    int TIME_T = 1;
 
     int NFRAMES_PER_ANGLE_BIN = 14;
 
 
-    int PRINT_EVERY_N_FRAMES = 30;
+    int PRINT_EVERY_N_FRAMES = 100;
     int PRINT_WARNINGS = 0;
     int PRINT_DEBUG = 0;
     int OUTDIR_WITH_PARAMS = 0;
-    int PREPEND_BLANK_FRAMES = 0;
+    int PREPEND_BLANK_FRAMES = 1;
 
     int FILENAME_WITH_TIMES = 0;
+    int PAINT_INNERMOUTH_BLACK = 1;
 
-
-
+    int FINETUNE_EXPRESSIONS = 0;
+    float FINETUNE_COEF = 1.5f;
 
     /**
      * @brief Expression basis parameters
      */
-    std::string EXP_BASIS = "GLOBAL29";
+    std::string EXP_BASIS = "GLOBAL79";
 
-    double OPTS_DELTA_EPS = 0.4;
+    double OPTS_DELTA_EPS = 1.1;
 
-    size_t K_EPSILON = 29;
-    size_t K_EPSILON_L = 29;
+    size_t K_EPSILON = 79;
+    size_t K_EPSILON_L = 79;
 
     std::string EX_PATH = "models/dat_files/E/EX.dat";
     std::string EY_PATH = "models/dat_files/E/EY.dat";
@@ -204,54 +211,170 @@ namespace config
     void set_params_from_YAML_file(const std::string& filepath)
     {
         cv::FileStorage file(filepath, cv::FileStorage::READ);
-        file["EXP_LOWER_BOUND_PATH"] >> EXP_LOWER_BOUND_PATH;
-        file["EXP_BASIS"] >> EXP_BASIS;
+        cv::FileNode fn = file.root();
 
-        file["OPTS_DELTA_EPS"] >> OPTS_DELTA_EPS;
+        std::set<std::string> keys;
+
+        for (cv::FileNodeIterator fit = fn.begin(); fit != fn.end(); ++fit)
+        {
+            cv::FileNode item = *fit;
+            std::string keyname= item.name();
+            keys.insert(keyname);
+        }
+
+
+        if (keys.find("EXP_LOWER_BOUND_PATH") != keys.end())
+            file["EXP_LOWER_BOUND_PATH"] >> EXP_LOWER_BOUND_PATH;
+
+        if (keys.find("EXP_BASIS") != keys.end())
+            file["EXP_BASIS"] >> EXP_BASIS;
+
+        if (keys.find("OPTS_DELTA_EPS") != keys.end())
+            file["OPTS_DELTA_EPS"] >> OPTS_DELTA_EPS;
+
         set_exp_basis(EXP_BASIS);
 
 
-        file["OPTS_DELTA"] >> OPTS_DELTA;
-        file["OPTS_DELTA_BETA"] >> OPTS_DELTA_BETA;
-        file["REF_FACE_SIZE"] >> REF_FACE_SIZE;
-//        file["RESIZE_COEF"] >> RESIZE_COEF;
-        file["CONFIDENCE_RANGE"] >> CONFIDENCE_RANGE;
-        file["IGNORE_NOSE"] >> IGNORE_NOSE;
-        file["SIGMAS_FILE"] >> SIGMAS_FILE;
-        file["PAD_SINGLE_IMAGE"] >> PAD_SINGLE_IMAGE;
-        file["IGNORE_SOME_LANDMARKS"] >> IGNORE_SOME_LANDMARKS;
-        file["NTOT_RECONSTRS"] >> NTOT_RECONSTRS;
+        if (keys.find("OPTS_DELTA") != keys.end())
+            file["OPTS_DELTA"] >> OPTS_DELTA;
 
-        file["SINGLE_LANDMARKS"] >> SINGLE_LANDMARKS;
-        file["NPERMS"] >> NPERMS;
-        file["NMAX_FRAMES"] >> NMAX_FRAMES;
+        if (keys.find("OPTS_DELTA_BETA") != keys.end())
+            file["OPTS_DELTA_BETA"] >> OPTS_DELTA_BETA;
 
-        file["NFRAMES"] >> NFRAMES;
-        file["NMULTICOMBS"] >> NMULTICOMBS;
-        file["NRES_COEFS"] >> NRES_COEFS;
-        file["NSMOOTH_FRAMES"] >> NSMOOTH_FRAMES;
-        file["USE_LOCAL_MODELS"] >> USE_LOCAL_MODELS;
-        file["USE_CONSTANT_BOUNDS"] >> USE_CONSTANT_BOUNDS;
-        file["PAD_RENDERING"] >> PAD_RENDERING;
-        file["SKIP_FIRST_N_SECS"] >> SKIP_FIRST_N_SECS;
-        file["EVERY_N_SECS"] >> EVERY_N_SECS;
-        file["SAVE_RECONSTRUCTIONS"] >> SAVE_RECONSTRUCTIONS;
-        file["OUTPUT_IDENTITY"] >> OUTPUT_IDENTITY;
-        file["OUTPUT_VISUALS"] >> OUTPUT_VISUALS;
-        file["OUTDIR_WITH_PARAMS"] >> OUTDIR_WITH_PARAMS;
-        file["PRINT_EVERY_N_FRAMES"] >> PRINT_EVERY_N_FRAMES;
-        file["PRINT_WARNINGS"] >> PRINT_WARNINGS;
-        file["PRINT_DEBUG"] >> PRINT_DEBUG;
-        file["MAX_VID_FRAMES_TO_PROCESS"] >> MAX_VID_FRAMES_TO_PROCESS;
-        file["EXPR_L2_WEIGHT"] >> EXPR_L2_WEIGHT;
-        file["DEXPR_L2_WEIGHT"] >> DEXPR_L2_WEIGHT;
-        file["DPOSE_L2_WEIGHT"] >> DPOSE_L2_WEIGHT;
-        file["USE_TEMP_SMOOTHING"] >> USE_TEMP_SMOOTHING;
-        file["USE_EXP_REGULARIZATION"] >> USE_EXP_REGULARIZATION;
-        file["PREPEND_BLANK_FRAMES"] >> PREPEND_BLANK_FRAMES;
-        file["TIME_T"] >> TIME_T;
-        file["EXPR_UNIFORM_REG"] >> EXPR_UNIFORM_REG;
-        file["FILENAME_WITH_TIMES"] >> FILENAME_WITH_TIMES;
+        if (keys.find("REF_FACE_SIZE") != keys.end())
+            file["REF_FACE_SIZE"] >> REF_FACE_SIZE;
+
+        if (keys.find("CONFIDENCE_RANGE") != keys.end())
+            file["CONFIDENCE_RANGE"] >> CONFIDENCE_RANGE;
+
+        if (keys.find("IGNORE_NOSE") != keys.end())
+            file["IGNORE_NOSE"] >> IGNORE_NOSE;
+
+        if (keys.find("SIGMAS_FILE") != keys.end())
+            file["SIGMAS_FILE"] >> SIGMAS_FILE;
+
+        if (keys.find("PAD_SINGLE_IMAGE") != keys.end())
+            file["PAD_SINGLE_IMAGE"] >> PAD_SINGLE_IMAGE;
+
+        if (keys.find("IGNORE_SOME_LANDMARKS") != keys.end())
+            file["IGNORE_SOME_LANDMARKS"] >> IGNORE_SOME_LANDMARKS;
+
+        if (keys.find("NTOT_RECONSTRS") != keys.end())
+            file["NTOT_RECONSTRS"] >> NTOT_RECONSTRS;
+
+        if (keys.find("SINGLE_LANDMARKS") != keys.end())
+            file["SINGLE_LANDMARKS"] >> SINGLE_LANDMARKS;
+
+        if (keys.find("NPERMS") != keys.end())
+            file["NPERMS"] >> NPERMS;
+
+        if (keys.find("NMAX_FRAMES") != keys.end())
+            file["NMAX_FRAMES"] >> NMAX_FRAMES;
+
+        if (keys.find("NFRAMES") != keys.end())
+            file["NFRAMES"] >> NFRAMES;
+
+        if (keys.find("NMULTICOMBS") != keys.end())
+            file["NMULTICOMBS"] >> NMULTICOMBS;
+
+        if (keys.find("NRES_COEFS") != keys.end())
+            file["NRES_COEFS"] >> NRES_COEFS;
+
+        if (keys.find("NSMOOTH_FRAMES") != keys.end())
+            file["NSMOOTH_FRAMES"] >> NSMOOTH_FRAMES;
+
+        if (keys.find("USE_LOCAL_MODELS") != keys.end())
+            file["USE_LOCAL_MODELS"] >> USE_LOCAL_MODELS;
+
+        if (keys.find("USE_CONSTANT_BOUNDS") != keys.end())
+            file["USE_CONSTANT_BOUNDS"] >> USE_CONSTANT_BOUNDS;
+
+        if (keys.find("PAD_RENDERING") != keys.end())
+            file["PAD_RENDERING"] >> PAD_RENDERING;
+
+        if (keys.find("SKIP_FIRST_N_SECS") != keys.end())
+            file["SKIP_FIRST_N_SECS"] >> SKIP_FIRST_N_SECS;
+
+        if (keys.find("EVERY_N_SECS") != keys.end())
+            file["EVERY_N_SECS"] >> EVERY_N_SECS;
+
+        if (keys.find("SAVE_RECONSTRUCTIONS") != keys.end())
+            file["SAVE_RECONSTRUCTIONS"] >> SAVE_RECONSTRUCTIONS;
+
+        if (keys.find("OUTPUT_IDENTITY") != keys.end())
+            file["OUTPUT_IDENTITY"] >> OUTPUT_IDENTITY;
+
+        if (keys.find("OUTPUT_VISUALS") != keys.end())
+            file["OUTPUT_VISUALS"] >> OUTPUT_VISUALS;
+
+        if (keys.find("OUTPUT_FACIAL_PARTS") != keys.end())
+            file["OUTPUT_FACIAL_PARTS"] >> OUTPUT_FACIAL_PARTS;
+
+        if (keys.find("OUTPUT_LANDMARKS_EXP_VARIATION") != keys.end())
+            file["OUTPUT_LANDMARKS_EXP_VARIATION"] >> OUTPUT_LANDMARKS_EXP_VARIATION;
+
+        if (keys.find("OUTPUT_EXPRESSIONS") != keys.end())
+            file["OUTPUT_EXPRESSIONS"] >> OUTPUT_EXPRESSIONS;
+
+        if (keys.find("OUTPUT_EXPRESSIONS_ALL") != keys.end())
+            file["OUTPUT_EXPRESSIONS_ALL"] >> OUTPUT_EXPRESSIONS_ALL;
+
+        if (keys.find("OUTPUT_POSES") != keys.end())
+            file["OUTPUT_POSES"] >> OUTPUT_POSES;
+
+        if (keys.find("OUTDIR_WITH_PARAMS") != keys.end())
+            file["OUTDIR_WITH_PARAMS"] >> OUTDIR_WITH_PARAMS;
+
+        if (keys.find("PRINT_EVERY_N_FRAMES") != keys.end())
+            file["PRINT_EVERY_N_FRAMES"] >> PRINT_EVERY_N_FRAMES;
+
+        if (keys.find("PRINT_WARNINGS") != keys.end())
+            file["PRINT_WARNINGS"] >> PRINT_WARNINGS;
+
+        if (keys.find("PRINT_DEBUG") != keys.end())
+            file["PRINT_DEBUG"] >> PRINT_DEBUG;
+
+        if (keys.find("MAX_VID_FRAMES_TO_PROCESS") != keys.end())
+            file["MAX_VID_FRAMES_TO_PROCESS"] >> MAX_VID_FRAMES_TO_PROCESS;
+
+        if (keys.find("EXPR_L2_WEIGHT") != keys.end())
+            file["EXPR_L2_WEIGHT"] >> EXPR_L2_WEIGHT;
+
+        if (keys.find("DEXPR_L2_WEIGHT") != keys.end())
+            file["DEXPR_L2_WEIGHT"] >> DEXPR_L2_WEIGHT;
+
+        if (keys.find("DPOSE_L2_WEIGHT") != keys.end())
+            file["DPOSE_L2_WEIGHT"] >> DPOSE_L2_WEIGHT;
+
+        if (keys.find("USE_TEMP_SMOOTHING") != keys.end())
+            file["USE_TEMP_SMOOTHING"] >> USE_TEMP_SMOOTHING;
+
+        if (keys.find("USE_EXP_REGULARIZATION") != keys.end())
+            file["USE_EXP_REGULARIZATION"] >> USE_EXP_REGULARIZATION;
+
+        if (keys.find("PREPEND_BLANK_FRAMES") != keys.end())
+            file["PREPEND_BLANK_FRAMES"] >> PREPEND_BLANK_FRAMES;
+
+        if (keys.find("TIME_T") != keys.end())
+            file["TIME_T"] >> TIME_T;
+
+        if (keys.find("EXPR_UNIFORM_REG") != keys.end())
+            file["EXPR_UNIFORM_REG"] >> EXPR_UNIFORM_REG;
+
+        if (keys.find("FILENAME_WITH_TIMES") != keys.end())
+            file["FILENAME_WITH_TIMES"] >> FILENAME_WITH_TIMES;
+
+        if (keys.find("PAINT_INNERMOUTH_BLACK") != keys.end())
+            file["PAINT_INNERMOUTH_BLACK"] >> PAINT_INNERMOUTH_BLACK;
+
+        if (keys.find("FINETUNE_EXPRESSIONS") != keys.end())
+            file["FINETUNE_EXPRESSIONS"] >> FINETUNE_EXPRESSIONS;
+
+        if (keys.find("FINETUNE_COEF") != keys.end())
+            file["FINETUNE_COEF"] >> FINETUNE_COEF;
+
+        if (keys.find("USE_EXPR_COMPONENT") != keys.end())
+            file["USE_EXPR_COMPONENT"] >> USE_EXPR_COMPONENT;
 
         int tmp;
         file["NFRAMES_PER_ANGLE_BIN"] >> tmp;
@@ -285,7 +408,10 @@ namespace config
             ss << "_";
         }
 
-        ss << NRES_COEFS << NMULTICOMBS << KERNEL_SIGMA;
+        if (FINETUNE_EXPRESSIONS)
+            ss << "F" << FINETUNE_COEF << "_";
+
+        ss << NRES_COEFS << NMULTICOMBS << KERNEL_SIGMA << "P" << PAINT_INNERMOUTH_BLACK;
 
         return ss.str();
     }

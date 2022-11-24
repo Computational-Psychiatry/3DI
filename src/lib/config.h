@@ -41,6 +41,12 @@ namespace config
 
     extern int OUTPUT_IDENTITY;
     extern int OUTPUT_VISUALS;
+    extern int OUTPUT_FACIAL_PARTS;
+    extern int OUTPUT_LANDMARKS_EXP_VARIATION;
+
+    extern int OUTPUT_EXPRESSIONS;
+    extern int OUTPUT_EXPRESSIONS_ALL;
+    extern int OUTPUT_POSES;
 
     extern int MAX_VID_FRAMES_TO_PROCESS;
 
@@ -71,6 +77,11 @@ namespace config
     extern int PREPEND_BLANK_FRAMES;
 
     extern int FILENAME_WITH_TIMES;
+
+    extern int PAINT_INNERMOUTH_BLACK;
+
+    extern int FINETUNE_EXPRESSIONS;
+    extern float FINETUNE_COEF;
 
     /**
      * @brief Expression basis parameters

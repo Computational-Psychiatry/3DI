@@ -125,7 +125,7 @@ int main(int argc, char** argv)
 
     //    std::string calibration_path = "./models/cameras/TreeCam_1041a.txt";
     std::string calibration_path("");
-    if (argc == 5) {
+    if (argc >= 5) {
         if (!is_float(argv[4]))
         {
             calibration_path = argv[4];
@@ -133,24 +133,35 @@ int main(int argc, char** argv)
         } else {
             field_of_view = std::stof(argv[4]);
 
-            outputVideoDir += std::string("/") + argv[4];
+            if (config::OUTDIR_WITH_PARAMS)
+            {
+                outputVideoDir += std::string("/") + argv[4];
 
-            if (!std::experimental::filesystem::exists(outputVideoDir))
-                std::experimental::filesystem::create_directory(outputVideoDir);
+                if (!std::experimental::filesystem::exists(outputVideoDir))
+                    std::experimental::filesystem::create_directory(outputVideoDir);
+            }
         }
     }
 
-
+    bool identity_only = false;
+	
     outputVideoPath = outputVideoDir + "/" + remove_extension(base_name(filepath)) + ".avi";
-
 
     std::string identityPath = remove_extension(outputVideoPath) + ".id.txt";
     std::string texturePath = remove_extension(outputVideoPath) + ".tex.txt";
 
-    /*
+    if (argc >= 6) {
+        identity_only = (bool) std::stoi(argv[5]);
+    }
+
+    if (argc >= 7) {
+        std::string identityOutDir(argv[6]);
+        identityPath = identityOutDir + "/" + remove_extension(base_name(filepath)) + ".id.txt";
+        texturePath  = identityOutDir + "/" + remove_extension(base_name(filepath)) + ".tex.txt";
+    }
+
     if (std::experimental::filesystem::exists(identityPath))
         return 0;
-        */
 
     if (!cam0.initialized)
     {
@@ -184,21 +195,13 @@ int main(int argc, char** argv)
 
 
 
-
-
-    float *h_X0, *h_Y0, *h_Z0, *h_tex_mu;
-    h_X0 = (float*)malloc( NPTS*sizeof(float) );
-    h_Y0 = (float*)malloc( NPTS*sizeof(float) );
-    h_Z0 = (float*)malloc( NPTS*sizeof(float) );
-    h_tex_mu = (float*)malloc( NPTS*sizeof(float) );
+    std::vector<float> h_X0(NPTS, 0.0f), h_Y0(NPTS, 0.0f), h_Z0(NPTS, 0.0f), h_tex_mu(NPTS, 0.0f);
 
     {
         VideoFitter vf_identity(cam0,
                                 NID_COEFS, NTEX_COEFS, config::K_EPSILON,
                                 K_ALPHA_L, 0, config::K_EPSILON_L, config::NFRAMES,
                                 false, false);
-
-
 
         cudaChannelFormatDesc desc = cudaCreateChannelDesc<float>();
         cudaChannelFormatDesc desc2 = cudaCreateChannelDesc<float>();
@@ -226,7 +229,7 @@ int main(int argc, char** argv)
         ///////////////////////////////////////////
         ///////////////////////////////////////////
         std::cout << "Learning the 3D identity of subject in video ... this may take a few minutes" << std::endl;
-        vf_identity.learn_identity(filepath, h_X0, h_Y0, h_Z0, h_tex_mu);
+        vf_identity.learn_identity(filepath, &h_X0[0], &h_Y0[0], &h_Z0[0], &h_tex_mu[0]);
         std::cout << "\tDone" << std::endl;
         ///////////////////////////////////////////
         ///////////////////////////////////////////
@@ -249,27 +252,20 @@ int main(int argc, char** argv)
 
 
 
-
     if (config::OUTPUT_IDENTITY) {
-        write_identity(identityPath, h_X0, h_Y0, h_Z0);
-        write_texture(texturePath, h_tex_mu);
+        write_identity(identityPath, &h_X0[0], &h_Y0[0], &h_Z0[0]);
+        write_texture(texturePath, &h_tex_mu[0]);
     }
 
-    /*
-    if (true) {
-
-        free(h_X0);
-        free(h_Y0);
-        free(h_Z0);
-        free(h_tex_mu);
+    if (identity_only) {
         return 0;
     }
-*/
+
     cam0.update_camera(1.0f);
     VideoFitter vf(cam0, 0, 0, config::K_EPSILON,
                    0, 0, config::K_EPSILON_L, config::TIME_T,
                     config::USE_TEMP_SMOOTHING, config::USE_EXP_REGULARIZATION,
-                    h_X0, h_Y0, h_Z0, h_tex_mu);
+                    &h_X0[0], &h_Y0[0], &h_Z0[0], &h_tex_mu[0]);
 
 
 
@@ -292,13 +288,23 @@ int main(int argc, char** argv)
     VideoOutput vid_out = vf.fit_video_frames_auto(filepath, outputVideoPath);
     std::cout << "\tDone" << std::endl;
 
-    std::string outputVideoPath_3D(""), outputVideoPath_texture("");
+    std::string outputVideoPath_3D(""), outputVideoPath_texture(""), outputVideoPath_smouth(""), outputVideoPath_sleye(""), outputVideoPath_sreye(""), outputPath_landmarksExpVariation("");
 
     outputVideoPath_3D = outputVideoPath;
     outputVideoPath_3D.replace(outputVideoPath_3D.end()-4,outputVideoPath_3D.end(), "_3Drenders.avi");
 
     outputVideoPath_texture = outputVideoPath;
     outputVideoPath_texture.replace(outputVideoPath_texture.end()-4,outputVideoPath_texture.end(), "_texture.avi");
+
+    outputVideoPath_smouth = outputVideoPath;
+    outputVideoPath_smouth.replace(outputVideoPath_smouth.end()-4,outputVideoPath_smouth.end(), "_mouth.avi");
+    outputVideoPath_sleye = outputVideoPath;
+    outputVideoPath_sleye.replace(outputVideoPath_sleye.end()-4,outputVideoPath_sleye.end(), "_leye.avi");
+    outputVideoPath_sreye = outputVideoPath;
+    outputVideoPath_sreye.replace(outputVideoPath_sreye.end()-4,outputVideoPath_sreye.end(), "_reye.avi");
+
+    outputPath_landmarksExpVariation = outputVideoPath;
+    outputPath_landmarksExpVariation.replace(outputPath_landmarksExpVariation.end()-4,outputPath_landmarksExpVariation.end(), ".landmarks_dexp");
 
     std::string exp_path = outputVideoPath;
     exp_path.replace(exp_path.end()-4,exp_path.end(), ".expressions");
@@ -308,6 +314,12 @@ int main(int argc, char** argv)
 
     vid_out.save_expressions(exp_path);
     vid_out.save_poses(pose_path);
+
+    if (config::OUTPUT_FACIAL_PARTS)
+        vf.output_facial_parts(vid_out, filepath, outputVideoPath_sleye, outputVideoPath_sreye, outputVideoPath_smouth);
+
+    if (config::OUTPUT_LANDMARKS_EXP_VARIATION)
+        vf.output_landmarks_expression_variation(vid_out, filepath, outputPath_landmarksExpVariation);
 
     if (config::OUTPUT_VISUALS)
     {
@@ -321,15 +333,10 @@ int main(int argc, char** argv)
     }
 
 
+
     cudaUnbindTexture(EX_texture);
     cudaUnbindTexture(EY_texture);
     cudaUnbindTexture(EZ_texture);
-
-
-    free(h_X0);
-    free(h_Y0);
-    free(h_Z0);
-    free(h_tex_mu);
 }
 
 

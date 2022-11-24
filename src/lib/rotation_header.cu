@@ -444,7 +444,7 @@ void RotationComputer::compute_euler_angles(float& yaw, float &pitch, float &rol
     }
 
     if (isnan(yaw)) {
-        print_vector(R, 9, "RRRR");
+        //print_vector(R, 9, "RRRR");
     }
 }
 

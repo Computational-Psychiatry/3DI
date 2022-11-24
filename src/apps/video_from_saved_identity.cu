@@ -113,10 +113,13 @@ int main(int argc, char** argv)
         } else {
             field_of_view = std::stof(argv[4]);
 
-            outputVideoDir += std::string("/") + argv[4];
+            if (config::OUTDIR_WITH_PARAMS)
+            {
+                outputVideoDir += std::string("/") + argv[4];
 
-            if (!std::experimental::filesystem::exists(outputVideoDir))
-                std::experimental::filesystem::create_directory(outputVideoDir);
+                if (!std::experimental::filesystem::exists(outputVideoDir))
+                    std::experimental::filesystem::create_directory(outputVideoDir);
+            }
         }
     }
 
@@ -124,27 +127,45 @@ int main(int argc, char** argv)
     int FPSvid=30;
 
     {
-	cv::VideoCapture tmpCap(filepath);
+        cv::VideoCapture tmpCap(filepath);
     	FPSvid = tmpCap.get(cv::CAP_PROP_FPS);
     }
 
-    if (argc >= 8)
-        config::set_skip_first_nsecs(std::stof(argv[7]));
+    if (argc >= 6) {
+        float _nsecs = std::stof(argv[5]);
 
-    if (argc >= 9)
-        config::set_max_vid_frames_to_process(FPSvid*std::stoi(argv[8]));
+        if (_nsecs != -1.0f)
+            config::set_skip_first_nsecs(_nsecs);
+    }
+
+    if (argc >= 7) {
+        int _maxframes = std::stoi(argv[6]);
+
+        if (_maxframes != -1)
+            config::set_max_vid_frames_to_process(FPSvid*_maxframes);
+    }
 
     if (config::FILENAME_WITH_TIMES)
         outputVideoPath = outputVideoDir + "/" + remove_extension(base_name(filepath)) + "_" + std::to_string((int)config::SKIP_FIRST_N_SECS) + "-" + std::to_string((int)round(config::MAX_VID_FRAMES_TO_PROCESS/FPSvid)) + ".avi";
     else
-	outputVideoPath = outputVideoDir + "/" + remove_extension(base_name(filepath)) + ".avi";
+        outputVideoPath = outputVideoDir + "/" + remove_extension(base_name(filepath)) + ".avi";
 
-    std::string outputVideoPath_3D(""), outputVideoPath_texture("");
+    std::string outputVideoPath_3D(""), outputVideoPath_texture(""), outputVideoPath_smouth(""), outputVideoPath_sleye(""), outputVideoPath_sreye(""), outputPath_landmarksExpVariation("");
 
     if (outputVideoPath.size() > 0)
     {
         outputVideoPath_3D = outputVideoPath;
         outputVideoPath_3D.replace(outputVideoPath_3D.end()-4,outputVideoPath_3D.end(), "_3Drenders.avi");
+
+        outputVideoPath_smouth = outputVideoPath;
+        outputVideoPath_smouth.replace(outputVideoPath_smouth.end()-4,outputVideoPath_smouth.end(), "_mouth.avi");
+        outputVideoPath_sleye = outputVideoPath;
+        outputVideoPath_sleye.replace(outputVideoPath_sleye.end()-4,outputVideoPath_sleye.end(), "_leye.avi");
+        outputVideoPath_sreye = outputVideoPath;
+        outputVideoPath_sreye.replace(outputVideoPath_sreye.end()-4,outputVideoPath_sreye.end(), "_reye.avi");
+
+        outputPath_landmarksExpVariation = outputVideoPath;
+        outputPath_landmarksExpVariation.replace(outputPath_landmarksExpVariation.end()-4,outputPath_landmarksExpVariation.end(), ".landmarks_dexp");
 
         outputVideoPath_texture = outputVideoPath;
         outputVideoPath_texture.replace(outputVideoPath_texture.end()-4,outputVideoPath_texture.end(), "_texture.avi");
@@ -155,6 +176,13 @@ int main(int argc, char** argv)
 
 
     std::string identityPath = remove_extension(outputVideoPath) + ".id.txt";
+    std::string texturePath  = remove_extension(outputVideoPath) + ".tex.txt";
+
+    if (argc >= 8)
+        identityPath = argv[7];
+
+    if (argc >= 9)
+        texturePath = argv[8];
 
     if (!cam0.initialized)
     {
@@ -192,8 +220,8 @@ int main(int argc, char** argv)
     h_tex_mu = (float*)malloc( NPTS*sizeof(float) );
     int min_x(0), max_x(0), min_y(0), max_y(0);
 
-    std::vector< std::vector<float> > id = read2DVectorFromFile<float>(argv[5],  NPTS, 3);
-    std::vector< std::vector<float> > tex = read2DVectorFromFile<float>(argv[6],  NPTS, 1);
+    std::vector< std::vector<float> > id = read2DVectorFromFile<float>(identityPath,  NPTS, 3);
+    std::vector< std::vector<float> > tex = read2DVectorFromFile<float>(texturePath,  NPTS, 1);
 
     for (size_t pi=0; pi<NPTS; ++pi)
     {
@@ -244,9 +272,17 @@ int main(int argc, char** argv)
     vid_out.save_expressions_all(exp_all_path);
     vid_out.save_poses(pose_path, &vf.ov, &vf.rc);
 
-    vf.visualize_texture(vid_out, filepath, outputVideoPath_texture);
-    vf.visualize_3dmesh(vid_out, filepath, outputVideoPath_3D);
+    if (config::OUTPUT_FACIAL_PARTS)
+        vf.output_facial_parts(vid_out, filepath, outputVideoPath_sleye, outputVideoPath_sreye, outputVideoPath_smouth);
 
+    if (config::OUTPUT_LANDMARKS_EXP_VARIATION)
+        vf.output_landmarks_expression_variation(vid_out, filepath, outputPath_landmarksExpVariation);
+
+    if (config::OUTPUT_VISUALS)
+    {
+        vf.visualize_texture(vid_out, filepath, outputVideoPath_texture);
+        vf.visualize_3dmesh(vid_out, filepath, outputVideoPath_3D);
+    }
     cudaUnbindTexture(EX_texture);
     cudaUnbindTexture(EY_texture);
     cudaUnbindTexture(EZ_texture);

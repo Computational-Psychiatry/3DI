@@ -35,6 +35,68 @@ cv::Point2f transform_pt(float px, float py, const cv::Point2f* center,
     return ptTrans;
 }
 
+void paint_innermouth_black(cv::Mat& frame, const std::vector<float>& xp_vec, const std::vector<float>& yp_vec)
+{
+
+    vector<cv::Point2f> imouth_pts;
+    cv::Mat blankim(frame.rows, frame.cols, CV_8U, cv::Scalar::all(0));
+
+    float face_size = compute_face_size(&xp_vec[0], &yp_vec[0]);
+    float unit_pix = face_size/config::REF_FACE_SIZE;
+
+
+    for (uint i=43; i<=50; ++i) {
+        float offx = 0.0f;
+
+        if (i == 43)
+            offx += 3*unit_pix;
+
+        if (i == 47)
+            offx -= 3*unit_pix;
+
+        imouth_pts.push_back(cv::Point2f(xp_vec[i]+offx, yp_vec[i]));
+    }
+
+    for (uint i=0; i<8; ++i)
+        line( blankim, imouth_pts[i],  imouth_pts[(i+1)%8], Scalar( 255 ), 3 );
+
+    vector<vector<Point> > contours;
+    findContours( blankim, contours, RETR_TREE, CHAIN_APPROX_SIMPLE);
+
+    float minx = *std::min_element(xp_vec.begin()+31, xp_vec.end());
+    float maxx = *std::max_element(xp_vec.begin()+31, xp_vec.end());
+    float miny = *std::min_element(yp_vec.begin()+31, yp_vec.end());
+    float maxy = *std::max_element(yp_vec.begin()+31, yp_vec.end());
+
+    float m1 = sqrtf((xp_vec[44]-xp_vec[50])*(xp_vec[44]-xp_vec[50])+(yp_vec[44]-yp_vec[50])*(yp_vec[44]-yp_vec[50]));
+    float m2 = sqrtf((xp_vec[45]-xp_vec[49])*(xp_vec[45]-xp_vec[49])+(yp_vec[45]-yp_vec[49])*(yp_vec[45]-yp_vec[49]));
+    float m3 = sqrtf((xp_vec[46]-xp_vec[48])*(xp_vec[46]-xp_vec[48])+(yp_vec[46]-yp_vec[48])*(yp_vec[46]-yp_vec[48]));
+    float mouth_opening_distance = face_size/config::REF_FACE_SIZE*(m1+m2+m3)/3.0f;
+
+    if (mouth_opening_distance > 8.0)
+    {
+        for( uint i = (uint)miny; i < (uint)maxy; i++ )
+        {
+            for( uint j = (uint)minx; j < (uint)maxx; j++ )
+            {
+                float rawdist = (float)pointPolygonTest( contours[0], Point2f((float)j, (float)i), true );
+
+                if (rawdist > face_size/config::REF_FACE_SIZE) {
+
+                    if (frame.channels() == 1)
+                        frame.at<uchar>(i,j) = 0;
+                    else if (frame.channels() == 3)
+                    {
+                        frame.at<cv::Vec3b>(i,j)[0] = 0;
+                        frame.at<cv::Vec3b>(i,j)[1] = 0;
+                        frame.at<cv::Vec3b>(i,j)[2] = 0;
+                    }
+                }
+            }
+        }
+    }
+}
+
 
 cv::Rect detect_face_opencv(Net& detection_net, const std::string& framework, cv::Mat &frame, Rect *prev_d, double* face_confidence, bool multiscale_start)
 {
@@ -163,8 +225,13 @@ void detect_landmarks_opencv(const cv::Rect& d, double face_confidence, Net& lan
             ss << face_confidence;
             cv::rectangle(frame, cv::Point2f(d.x, d.y), cv::Point(d.x+d.width, d.y+d.height), cv::Scalar(0, 255, 0),2, 4);
             cv::putText(frame,ss.str(),  cv::Point2f(d.x, d.y-20), cv::FONT_HERSHEY_PLAIN, 1.75, cv::Scalar(0,0,255), 2);
+
+
+
+
+
             cv::imshow("frame", frame);
-            cv::waitKey(0);
+            cv::waitKey(1);
         }
 
 

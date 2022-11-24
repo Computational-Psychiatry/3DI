@@ -244,6 +244,26 @@ void save_2d_cuda_array(void* d_arr, int Nrows, int Ncols, const std::string& fn
 
 using std::vector;
 
+
+template<typename T>
+T variance(const std::vector<T> &vec) {
+    const size_t sz = vec.size();
+    if (sz == 1) {
+        return 0.0;
+    }
+
+    // Calculate the mean
+    const T mean = std::accumulate(vec.begin(), vec.end(), 0.0) / sz;
+
+    // Now calculate the variance
+    auto variance_func = [&mean, &sz](T accumulator, const T& val) {
+        return accumulator + ((val - mean)*(val - mean) / (sz - 1));
+    };
+
+    return std::accumulate(vec.begin(), vec.end(), 0.0, variance_func);
+}
+
+
 /*
 template <class T>
 T* vec2arr(vector<vector<T> > &vals, int nrows, int ncols, bool is_row_major = false);
@@ -413,6 +433,7 @@ std::vector< std::vector<T> > read2DVectorFromFile(const std::string& FileName, 
 
 
 float compute_face_size(const float *xp, const float *yp);
+float compute_face_diagonal(const float *xp, const float *yp);
 
 
 __global__ void render_expression_basis_texture(

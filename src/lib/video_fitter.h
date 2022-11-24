@@ -136,14 +136,21 @@ struct VideoFitter
                                                       VideoOutput &out);
 
 
+
+    bool output_landmarks_expression_variation(VideoOutput& out, std::string& input_path, std::string& output_landmarks_txt,
+                                      vector<vector<float> >* all_exps=NULL, vector<vector<float> >* all_poses=NULL);
+
+    bool output_facial_parts(VideoOutput& out,
+                                       std::string& input_path, std::string &output_path_sleye, std::string &output_path_sreye, std::string& output_path_smouth,
+                                       vector<vector<float> >* all_exps=NULL, vector<vector<float> >* all_poses=NULL);
+
     bool fit_to_video_frame(InputData& id);
 
     bool visualize_3dmesh(VideoOutput& out, std::string &input_path, std::string &output_path, vector<vector<float> > *all_exps=NULL, vector<vector<float> > *all_poses=NULL);
+    //bool visualize_3dmesh_novidin(VideoOutput& out, std::string &output_path, vector<vector<float> > *all_exps=NULL, vector<vector<float> > *all_poses=NULL);
     bool visualize_texture(VideoOutput& out, std::string &input_path, std::string &output_path, vector<vector<float> > *all_exps=NULL, vector<vector<float> > *all_poses=NULL);
 
     bool generate_texture(int subj_id, int imwidth, const std::string& out_dir_root, const float fov_data, const float tz);
-
-
 
 };
 
