@@ -49,9 +49,9 @@ Also, rendered videos that may be produced alongside with expression/pose coeffi
 ## Example 1: Landmarks (i.e., expression-related landmark movements)
 
 1. Compile the code by following instructions in the section Compiling the code
-1. Run the command `./video /offline_data/face/test_vid.mp4 ./output ./config/default_output_landmarks.txt 90`
+1. Run the command `./video /offline_data/face/test_vid.mp4 ./output ./configs/default_output_landmarks.txt 90`
     - a) Warning 1: the last parameter, `90`, is the camera parameter and it must be modified particularly if you know and have the model of the camera that recorded the data; see **parameter #4** in section Running the code.
-    - b) Warning 2: the configuration file `./config/default_output_landmarks.txt` is for example purposes and will process only a little part of the video to produce results quickly. If you run the code for actual analyses you must change the `MAX_VID_FRAMES_TO_PROCESS` in the config file to a value large enough to process entire videos.
+    - b) Warning 2: the configuration file `./configs/default_output_landmarks.txt` is for example purposes and will process only a little part of the video to produce results quickly. If you run the code for actual analyses you must change the `MAX_VID_FRAMES_TO_PROCESS` in the config file to a value large enough to process entire videos.
 1. The landmark movements are stored in the file `./output/vid_file.landmarks_dexp` (see section Outputs above to interpret this file) 
 1. You can visualize the landmarks by following the script `./build/scripts/visualize_landmarks.py`
 
