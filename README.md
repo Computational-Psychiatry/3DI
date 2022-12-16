@@ -49,9 +49,9 @@ Also, rendered videos that may be produced alongside with expression/pose coeffi
 ## Example 1: Landmarks (i.e., expression-related landmark movements)
 
 1. Compile the code by following instructions in the section Compiling the code
-1. Run the command `./video /offline_data/face/test_vid.mp4 ./output ./config/default_output_landmarks.txt 90`
+1. Run the command `./video /offline_data/face/test_vid.mp4 ./output ./configs/default_output_landmarks.txt 90`
     - a) Warning 1: the last parameter, `90`, is the camera parameter and it must be modified particularly if you know and have the model of the camera that recorded the data; see **parameter #4** in section Running the code.
-    - b) Warning 2: the configuration file `./config/default_output_landmarks.txt` is for example purposes and will process only a little part of the video to produce results quickly. If you run the code for actual analyses you must change the `MAX_VID_FRAMES_TO_PROCESS` in the config file to a value large enough to process entire videos.
+    - b) Warning 2: the configuration file `./configs/default_output_landmarks.txt` is for example purposes and will process only a little part of the video to produce results quickly. If you run the code for actual analyses you must change the `MAX_VID_FRAMES_TO_PROCESS` in the config file to a value large enough to process entire videos.
 1. The landmark movements are stored in the file `./output/vid_file.landmarks_dexp` (see section Outputs above to interpret this file) 
 1. You can visualize the landmarks by following the script `./build/scripts/visualize_landmarks.py`
 
@@ -71,6 +71,8 @@ As seen in the section above, the code takes a config file as input. Below are c
 - `OUTPUT_VISUALS`: Create the videos that visualize the result of 3D face reconstruction. **NOTE:** The first `SKIP_FIRST_N_SECS` seconds of the video will be blank, this is on purpose. Two videos will be produced: 
     - a) a video that shows the rendered pose+expression and frontal expression alongside with the input video
     - b) a video that shows the texture alongside the input video
+- `OUTPUT_LANDMARKS_EXP_VARIATION`: `0` or `1`; produce txt file that contains expression related variation at every frame (spatial variation -- not tepmoral)
+- `OUTPUT_FACIAL_PARTS`: `0` or `1`; produce 3 little videos, which are centered around three facial features (left eye, right eye and mouth). These videos are produced essentially for the Facial Basis method. (Prior to be passed to the Facial Basis method, they need to be registered via the `streg` code)
 
 ### Command line output
 - `PRINT_EVERY_N_FRAMES`: print the number of processed video frame every N frames. E.g., setting it to 100 will print a line every 100 frames
