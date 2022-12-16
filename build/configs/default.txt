@@ -2,29 +2,29 @@
 ---
 EXP_BASIS: "GLOBAL79"
 USE_EXPR_COMPONENT: -1
-OPTS_DELTA_EPS: 3.0 
+OPTS_DELTA_EPS: 1.20
 # Inequality constraints for shape identity and texture
-OPTS_DELTA: 0.5
-OPTS_DELTA_BETA: 2.08
+OPTS_DELTA: 0.6
+OPTS_DELTA_BETA: 2.04
 # face size
-REF_FACE_SIZE: 84
+REF_FACE_SIZE: 88
 RESIZE_COEF: 0.50
 CONFIDENCE_RANGE: 0.42
 IGNORE_NOSE: 0
 # About learning identity
 NPERMS: 9
-NMAX_FRAMES: 700
-NFRAMES: 9
+NMAX_FRAMES: 3500
+NFRAMES: 7
 # Spatio-temporal averaging (only for visualization)
 NSMOOTH_FRAMES: 1
 # 
 SIGMAS_FILE: 0
 SINGLE_LANDMARKS: 0
-IGNORE_SOME_LANDMARKS: 1
+IGNORE_SOME_LANDMARKS: 0
 PAD_SINGLE_IMAGE: 0
 # about landmarks
-USE_LOCAL_MODELS: 1
-USE_CONSTANT_BOUNDS: 0
+USE_LOCAL_MODELS: 0
+USE_CONSTANT_BOUNDS: 1
 # The below PAD_RENDERING option is mostly for MMI (must be set to 0), because there is little pad between face and frame
 PAD_RENDERING: 1
 # The below is for saving output
@@ -36,7 +36,7 @@ EXPR_L2_WEIGHT: 0.5
 DEXPR_L2_WEIGHT: 0.00025
 DPOSE_L2_WEIGHT: 0.0001
 TIME_T: 1
-KERNEL_SIGMA: 0.75
+KERNEL_SIGMA: 0.50
 #
 # The parameters above should not be changed by users unless they know what they are doing
 #
@@ -45,16 +45,16 @@ KERNEL_SIGMA: 0.75
 # The settings below are more likely to be of interest to the end user
 #
 # Skip the first N seconds of video & maximal number of frames to process
-SKIP_FIRST_N_SECS: 15.0
-MAX_VID_FRAMES_TO_PROCESS: 50000
+SKIP_FIRST_N_SECS: 0.0
+MAX_VID_FRAMES_TO_PROCESS: 600
 # Save output files into subdir that encodes parameter setting
 # (this is needed if one compares multiple versions of the code)
 OUTDIR_WITH_PARAMS: 0
-FILENAME_WITH_TIMES: 1
+FILENAME_WITH_TIMES: 0
 PREPEND_BLANK_FRAMES: 0
 ## Parameters that affect processing speed
 # The parameter below should ideally be set to something like 8, but it can be temporarily reduced (e.g., to 2) to speed up outputif we need to get results quickly 
-NTOT_RECONSTRS: 9
+NTOT_RECONSTRS: 6
 # Increasing these will reduce jitter in output but also will linearly increase processing time
 NMULTICOMBS: 6
 NRES_COEFS: 6
@@ -65,3 +65,4 @@ OUTPUT_VISUALS: 1
 PRINT_EVERY_N_FRAMES: 100
 PRINT_WARNINGS: 0
 PRINT_DEBUG: 0
+OUTPUT_FACIAL_PARTS: 1
