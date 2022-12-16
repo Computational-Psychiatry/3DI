@@ -71,6 +71,8 @@ As seen in the section above, the code takes a config file as input. Below are c
 - `OUTPUT_VISUALS`: Create the videos that visualize the result of 3D face reconstruction. **NOTE:** The first `SKIP_FIRST_N_SECS` seconds of the video will be blank, this is on purpose. Two videos will be produced: 
     - a) a video that shows the rendered pose+expression and frontal expression alongside with the input video
     - b) a video that shows the texture alongside the input video
+- `OUTPUT_LANDMARKS_EXP_VARIATION`: `0` or `1`; produce txt file that contains expression related variation at every frame (spatial variation -- not tepmoral)
+- `OUTPUT_FACIAL_PARTS`: `0` or `1`; produce 3 little videos, which are centered around three facial features (left eye, right eye and mouth). These videos are produced essentially for the Facial Basis method. (Prior to be passed to the Facial Basis method, they need to be registered via the `streg` code)
 
 ### Command line output
 - `PRINT_EVERY_N_FRAMES`: print the number of processed video frame every N frames. E.g., setting it to 100 will print a line every 100 frames
