@@ -7,6 +7,7 @@
 
 #include "cuda.h"
 #include "funcs.h"
+#include "config.h"
 #include "newfuncs.h"
 #include "constants.h"
 #include "renderer.h"
@@ -66,22 +67,7 @@ struct OptimizationVariables
 		T(_T), Kalpha(_Kalpha), Kbeta(_Kbeta), Kepsilon(_Kepsilon),
 		use_identity(use_identity_), use_texture(use_texture_), use_expression(use_expression_),
 		for_landmarks(_for_landmarks)
-	{
-		/***************
-		if (for_landmarks)
-		{
-			Kalpha = K_ALPHA_L;
-			Kbeta = K_BETA_L;
-			Kepsilon = K_EPSILON_L;
-		}
-		else
-		{
-			Kalpha = K_ALPHA;
-			Kbeta = K_BETA;
-			Kepsilon = K_EPSILON;
-		}
-		*****************/
-
+    {
 		int Kper_frame = 3 + 3 + Kepsilon*use_expression;
 		Ktotal = Kper_frame*T + Kalpha*use_identity + Kbeta*use_texture;
 		uint Ktotal__ = Kper_frame*T + Kalpha + Kbeta;
@@ -277,7 +263,7 @@ struct Optimizer
 	    uint idx_mult = 0;
 	    d_tex_unsorted 	= d_TEX_ID_NREF;
 	    d_tex 			= d_tex_unsorted + Nrender_estimated;
-	    d_tex_torender 	= d_tex + NPTS;
+        d_tex_torender 	= d_tex + config::NPTS;
 	    d_Id_ 	= d_tex_torender + Nrender_estimated;
 	    d_dI_dlambda = d_Id_ + Nrender_estimated;
 

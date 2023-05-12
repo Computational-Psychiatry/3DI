@@ -104,7 +104,8 @@ void DerivativeComputer::compute_hessian_and_gradient(ushort t,
                                                                                                                  r.d_REX, r.d_REY, r.d_REZ,
                                                                                                                  o.dI_depsilons + epsilon_offset,
                                                                                                                  N_unique_pixels,
-                                                                                                                 o.Kepsilon);
+                                                                                                                 o.Kepsilon,
+                                                                                                                 config::Nredundant);
     }
 
     if (use_texture)

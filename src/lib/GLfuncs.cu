@@ -1,6 +1,8 @@
 #include "GLfuncs.h"
+#include "config.h"
 #include "constants.h"
 #include <math.h>
+#include <iostream>
 
 #include <GL/gl.h>
 #include <GL/glu.h>
@@ -59,28 +61,35 @@ cv::Mat drawFace_fromptr(const std::vector<std::vector<int > >& tl_vector, float
     glShadeModel(GL_SMOOTH);
     glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
 
-    std::vector<float> normalsx(NPTS, 0.0f);
-    std::vector<float> normalsy(NPTS, 0.0f);
-    std::vector<float> normalsz(NPTS, 0.0f);
+    std::vector<float> normalsx(config::NPTS, 0.0f);
+    std::vector<float> normalsy(config::NPTS, 0.0f);
+    std::vector<float> normalsz(config::NPTS, 0.0f);
+
+    float xdiff = X0[config::LIS[config::lmk_lec]]-X0[config::LIS[config::lmk_rec]];
+    float ydiff = Y0[config::LIS[config::lmk_lec]]-Y0[config::LIS[config::lmk_rec]];
+    float zdiff = Z0[config::LIS[config::lmk_lec]]-Z0[config::LIS[config::lmk_rec]];
+
+    float iod = sqrtf(xdiff*xdiff+ydiff*ydiff+zdiff*zdiff);
+    float coef = 2.71/iod;
 
     //! First compute the normals per point
-    for (uint i=0; i<N_TRIANGLES; ++i)
+    for (uint i=0; i<config::N_TRIANGLES; ++i)
     {
         uint a = tl_vector[i][0]-1;
         uint b = tl_vector[i][1]-1;
         uint c = tl_vector[i][2]-1;
 
-        float xa = X0[a];
-        float ya = Y0[a];
-        float za = Z0[a];
+        float xa = coef*X0[a];
+        float ya = coef*Y0[a];
+        float za = coef*Z0[a];
 
-        float xb = X0[b];
-        float yb = Y0[b];
-        float zb = Z0[b];
+        float xb = coef*X0[b];
+        float yb = coef*Y0[b];
+        float zb = coef*Z0[b];
 
-        float xc = X0[c];
-        float yc = Y0[c];
-        float zc = Z0[c];
+        float xc = coef*X0[c];
+        float yc = coef*Y0[c];
+        float zc = coef*Z0[c];
 
         float n_vx = xb-xa;
         float n_vy = yb-ya;
@@ -111,7 +120,7 @@ cv::Mat drawFace_fromptr(const std::vector<std::vector<int > >& tl_vector, float
         normalsz[c] += nref_norm[2];
     }
 
-    for (uint i=0; i<NPTS; ++i)
+    for (uint i=0; i<config::NPTS; ++i)
     {
         float normn = sqrtf(normalsx[i]*normalsx[i]+normalsy[i]*normalsy[i]+normalsz[i]*normalsz[i]);
 
@@ -123,25 +132,25 @@ cv::Mat drawFace_fromptr(const std::vector<std::vector<int > >& tl_vector, float
 
 
     //! And then draw the points -- each triangle of the mesh
-    for (uint i=0; i<N_TRIANGLES; i++) {
+    for (uint i=0; i<config::N_TRIANGLES; i++) {
         uint a = tl_vector[i][0]-1;
         uint b = tl_vector[i][1]-1;
         uint c = tl_vector[i][2]-1;
 
-        float coef = 1;
+        //float coef = 1;
         float tz = 24.0f;
 
         float xa = coef*X0[a];
         float ya = -coef*Y0[a];
-        float za = -coef*(Z0[a]+tz);
+        float za = -(coef*Z0[a]+tz);
 
         float xb = coef*X0[b];
         float yb = -coef*Y0[b];
-        float zb = -coef*(Z0[b]+tz);
+        float zb = -(coef*Z0[b]+tz);
 
         float xc = coef*X0[c];
         float yc = -coef*Y0[c];
-        float zc = -coef*(Z0[c]+tz);
+        float zc = -(coef*Z0[c]+tz);
 
         glBegin(GL_TRIANGLES);
 
@@ -186,28 +195,34 @@ cv::Mat drawFace(const std::vector<std::vector<int > >& tl_vector, const std::ve
     glShadeModel(GL_SMOOTH);
     glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
 
-    std::vector<float> normalsx(NPTS, 0.0f);
-    std::vector<float> normalsy(NPTS, 0.0f);
-    std::vector<float> normalsz(NPTS, 0.0f);
+    std::vector<float> normalsx(config::NPTS, 0.0f);
+    std::vector<float> normalsy(config::NPTS, 0.0f);
+    std::vector<float> normalsz(config::NPTS, 0.0f);
+
+    float xdiff = X0[config::LIS[config::lmk_lec]]-X0[config::LIS[config::lmk_rec]];
+    float ydiff = Y0[config::LIS[config::lmk_lec]]-Y0[config::LIS[config::lmk_rec]];
+    float zdiff = Z0[config::LIS[config::lmk_lec]]-Z0[config::LIS[config::lmk_rec]];
+    float iod = sqrtf(xdiff*xdiff+ydiff*ydiff+zdiff*zdiff);
+    float coef = 2.71/iod;
 
     //! First compute the normals per point
-    for (uint i=0; i<N_TRIANGLES; ++i)
+    for (uint i=0; i<config::N_TRIANGLES; ++i)
     {
         uint a = tl_vector[i][0]-1;
         uint b = tl_vector[i][1]-1;
         uint c = tl_vector[i][2]-1;
 
-        float xa = X0[a];
-        float ya = Y0[a];
-        float za = Z0[a];
+        float xa = coef*X0[a];
+        float ya = coef*Y0[a];
+        float za = coef*Z0[a];
 
-        float xb = X0[b];
-        float yb = Y0[b];
-        float zb = Z0[b];
+        float xb = coef*X0[b];
+        float yb = coef*Y0[b];
+        float zb = coef*Z0[b];
 
-        float xc = X0[c];
-        float yc = Y0[c];
-        float zc = Z0[c];
+        float xc = coef*X0[c];
+        float yc = coef*Y0[c];
+        float zc = coef*Z0[c];
 
         float n_vx = xb-xa;
         float n_vy = yb-ya;
@@ -238,7 +253,7 @@ cv::Mat drawFace(const std::vector<std::vector<int > >& tl_vector, const std::ve
         normalsz[c] += nref_norm[2];
     }
 
-    for (uint i=0; i<NPTS; ++i)
+    for (uint i=0; i<config::NPTS; ++i)
     {
         float normn = sqrtf(normalsx[i]*normalsx[i]+normalsy[i]*normalsy[i]+normalsz[i]*normalsz[i]);
 
@@ -250,25 +265,25 @@ cv::Mat drawFace(const std::vector<std::vector<int > >& tl_vector, const std::ve
 
 
     //! And then draw the points -- each triangle of the mesh
-    for (uint i=0; i<N_TRIANGLES; i++) {
+    for (uint i=0; i<config::N_TRIANGLES; i++) {
         uint a = tl_vector[i][0]-1;
         uint b = tl_vector[i][1]-1;
         uint c = tl_vector[i][2]-1;
 
-        float coef = 1;
+//        float coef = 1;
         float tz = 24.0f;
 
         float xa = coef*X0[a];
         float ya = -coef*Y0[a];
-        float za = -coef*(Z0[a]+tz);
+        float za = -(coef*Z0[a]+tz);
 
         float xb = coef*X0[b];
         float yb = -coef*Y0[b];
-        float zb = -coef*(Z0[b]+tz);
+        float zb = -(coef*Z0[b]+tz);
 
         float xc = coef*X0[c];
         float yc = -coef*Y0[c];
-        float zc = -coef*(Z0[c]+tz);
+        float zc = -(coef*Z0[c]+tz);
 
         glBegin(GL_TRIANGLES);
 

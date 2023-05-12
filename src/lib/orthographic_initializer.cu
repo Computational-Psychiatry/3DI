@@ -164,7 +164,7 @@ OrthographicInitializer::OrthographicInitializer(cusolverDnHandle_t& handleDn) :
     p0L_mat = (float*)malloc( 3*NLANDMARKS_51*sizeof(float) );
 
 
-    vector< vector<float> > p0L_mat_vec  = read2DVectorFromFile<float>("models/dat_files/p0L_mat.dat", NLANDMARKS_51, 3);
+    vector< vector<float> > p0L_mat_vec  = read2DVectorFromFile<float>(config::P0L_PATH, NLANDMARKS_51, 3);
 
 
 
@@ -403,3 +403,29 @@ OrthographicInitializer::~OrthographicInitializer()
     HANDLE_ERROR( cudaFree( d_p0L_mat ) );
 
 }
+
+
+
+
+
+vector<vector<float> > LightPoseEstimator::estimate_poses(cusolverDnHandle_t &handleDn, cublasHandle_t &handle,
+                                        OrthographicInitializer &oi, LandmarkData &ld)
+{
+    vector<vector<float> > all_poses;
+    for (size_t t=0; t<ld.get_num_frames(); ++t)
+    {
+        std::vector<float> xp_vec = ld.get_xpvec(t);
+        std::vector<float> yp_vec = ld.get_ypvec(t);
+
+        float yaw, pitch, roll;
+
+        oi.fit_model(handleDn, handle,
+                     &xp_vec[0], &yp_vec[0],
+                &yaw, &pitch, &roll);
+
+        std::cout << std::setw(4) << t << ": " << yaw << '\t' << pitch << '\t' << roll << std::endl;
+    }
+
+    return all_poses;
+}
+

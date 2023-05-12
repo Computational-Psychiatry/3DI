@@ -17,10 +17,11 @@
 #include "solver.h"
 #include "funcs.h"
 
+#include "input_data.h"
+
 #include <thrust/scan.h>
 #include <thrust/sequence.h>
 #include <thrust/execution_policy.h>
-
 
 
 __global__ void compute_orth_projections(const float *x_orthographic, const float *xl_bar, const float *yl_bar, const float *p0L_mat,
@@ -30,12 +31,8 @@ __global__ void compute_gradient_hessian_obj_orthographic(const float *x_orthogr
 		const float *Rp, const float *dRp_du1, const float *dRp_du2, const float *dRp_du3, const bool eval_gradients, float *nablaW, float *err);
 
 
-
-
 struct OrthographicInitializer
 {
-
-
 	float *d_x_orthographic;
 	float *d_x_orthographic_linesearch;
 	float *d_xl_bar, *d_yl_bar;
@@ -63,12 +60,47 @@ struct OrthographicInitializer
 
 	void reset_orthographic();
 
-    void fit_model(cusolverDnHandle_t& handleDn, cublasHandle_t& handle, const float* xl, const float* yl,
+    void fit_model(cusolverDnHandle_t& handleDn, cublasHandle_t& handle,
+                   const float* xl, const float* yl,
                    float *yaw_ptr = NULL, float *pitch_ptr = NULL, float *roll_ptr = NULL, bool reset_variables=true);
 
 	~OrthographicInitializer();
 
 };
+
+
+
+struct LightPoseEstimator
+{
+    LightPoseEstimator() {}
+
+    vector<vector<float> > estimate_poses(cusolverDnHandle_t& handleDn, cublasHandle_t& handle,
+                        OrthographicInitializer& oi, LandmarkData& ld);
+
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -8,8 +8,8 @@
 #ifndef CONSTANTS_H_
 #define CONSTANTS_H_
 
-#define N_TRIANGLES 46703
-#define NPTS 23660
+//#define N_TRIANGLES 46703
+//#define NPTS 23660
 //#define NTMP 13
 
 //#define NTMP 9
@@ -20,12 +20,12 @@
 //#define NTMP 7 // this is too large but we'll use it for dyadic sync analyses. Otherwise we'll probably go back to NTMP=3
 //#define NTMP 2
 //#define NTMP 1
-#define NID_COEFS 199
-#define NTEX_COEFS 199
-#define K_ALPHA NID_COEFS
-#define K_BETA NTEX_COEFS
-#define K_ALPHA_L 60
-#define K_BETA_L 0
+//#define NID_COEFS 199
+//#define NTEX_COEFS 199
+//#define K_ALPHA NID_COEFS
+//#define K_BETA NTEX_COEFS
+//#define K_ALPHA_L 60
+//#define K_BETA_L 0
 #define USE_TEXTURE 1
 #define USE_IDENTITY 1
 #define USE_EXPRESSION 1
@@ -43,11 +43,11 @@
 
 #define N_REDUNDANT NTMP*N_TRIANGLES
 
-const uint Nredundant = N_TRIANGLES*NTMP;
+//!uint Nredundant = 46703*NTMP;
 //const uint Nrender_estimated = 25000;
 //const uint Nrender_estimated = 16000;
-//const uint Nrender_estimated = 26000;
-const uint Nrender_estimated = 32000; // this is too large but we'll use it for dyadic sync analyses. Otherwise we'll probably go back to something like 16000
+const uint Nrender_estimated = 26000;
+//const uint Nrender_estimated = 32000; // this is too large but we'll use it for dyadic sync analyses. Otherwise we'll probably go back to something like 16000
 //const uint Nrender_estimated = 10000;
 //const uint Nrender_estimated = 8500;
 //const uint Nrender_estimated = 6000;

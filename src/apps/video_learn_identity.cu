@@ -1,5 +1,6 @@
 #include "cuda.h"
 #include "config.h"
+#include "video_fitter.h"
 #include <experimental/filesystem>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/highgui.hpp>
@@ -33,7 +34,8 @@
 #include "camera.h"
 #include "solver.h"
 #include "preprocessing.h"
-#include "video_fitter.h"
+
+
 
 #include <glob.h> // glob(), globfree()
 #include <string.h> // memset()
@@ -66,12 +68,18 @@ texture<float,2> TEX_texture;
 
 using std::vector;
 
-///data/videos/treecam/1041a/test_RA2_NA.mkv /data/videos/treecam/ML/output/ 15
+int create_data_for_multiframe(const std::string& imdir, Renderer &r, const std::string& outdir, const uint subj_id, float fovx, float fovy,
+                               vector<vector<float> >& xps, vector<vector<float> >& yps,
+                               vector<vector<float> >& xranges, vector<vector<float> >& yranges,
+                               vector<Mat> &selected_frames, vector<std::string>& result_basepaths, const std::vector<int> &angle_idx,
+                               Net &detection_net, Net &landmark_net, Net &leye_net, Net &reye_net, Net &mouth_net, Net &correction_net,
+                               bool set_RESIZE_COEF_via_median=true, int combination_id = -1);
 
 
 int main(int argc, char** argv)
 {
-    // /data/videos/treecam/ML/ML0001.mp4 /data/videos/treecam/ML/ML0001_TT.avi
+    ///////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////
     if (argc < 2) {
         std::cout << "You need at least one argument -- the filepath for the input video" << std::endl;
         return -1;
@@ -85,6 +93,7 @@ int main(int argc, char** argv)
     if (argc < 3) {
         std::cout << "we need at least 2 arguments (the 2nd needs to be output dir)" << std::endl;
     }
+
 
     Camera cam0;
     float field_of_view = 40;
@@ -101,20 +110,13 @@ int main(int argc, char** argv)
         }
     }
 
+    std::string shpCoeffsPath(argv[5]);
+    std::string texCoeffsPath(argv[6]);
 
-    double FPSvid=30;
-    {
-        cv::VideoCapture tmpCap(video_path);
-    	FPSvid = tmpCap.get(cv::CAP_PROP_FPS);
-    }
+    LandmarkData ld(landmarks_path);
 
-
-    std::string shpPath(argv[5]);
-    std::string texPath(argv[6]);
-
-    std::string exp_path(argv[7]);
-    std::string pose_path(argv[8]);
-    std::string illum_path(argv[9]);
+    if (std::experimental::filesystem::exists(shpCoeffsPath) && std::experimental::filesystem::exists(texCoeffsPath))
+        return 0;
 
     if (!cam0.initialized)
     {
@@ -123,14 +125,14 @@ int main(int argc, char** argv)
         int video_width = tmpCap.get(cv::CAP_PROP_FRAME_WIDTH);
         int video_height = tmpCap.get(cv::CAP_PROP_FRAME_HEIGHT);
 
-//        std::cout << video_width << '\t' << video_height << std::endl;
+        if (config::PRINT_DEBUG)
+            std::cout << video_width << '\t' << video_height << std::endl;
 
         tmpCap.release();
 
         float cam_cx = video_width/2.0;
         float cam_cy = video_height/2.0;
 
-//        double angle_x = 120.0f*M_PI/180.0; // angle in radians
         double angle_x = field_of_view*M_PI/180.0; // angle in radians
         double angle_y = angle_x; //60.0f*M_PI/180.0; //(cam_cy/cam_cx)*angle_x;
 
@@ -140,68 +142,76 @@ int main(int argc, char** argv)
         cam0.init(cam_alphax, cam_alphay, cam_cx, cam_cy, false);
     }
 
-    std::vector<std::vector<float> > selected_frame_xps, selected_frame_yps;
-    std::vector<std::vector<float> > selected_frame_xranges, selected_frame_yranges;
-    std::vector<cv::Mat> selected_frames;
-
-    float *h_X0, *h_Y0, *h_Z0, *h_tex_mu;
-
-    h_X0 = (float*)malloc( config::NPTS*sizeof(float) );
-    h_Y0 = (float*)malloc( config::NPTS*sizeof(float) );
-    h_Z0 = (float*)malloc( config::NPTS*sizeof(float) );
-    h_tex_mu = (float*)malloc( config::NPTS*sizeof(float) );
-    int min_x(0), max_x(0), min_y(0), max_y(0);
-
-    std::cout << "read identity" << std::endl;
-
-    std::vector< std::vector<float> > id = read2DVectorFromFile<float>(shpPath,  config::NPTS, 3);
-    std::vector< std::vector<float> > tex = read2DVectorFromFile<float>(texPath ,  config::NPTS, 1);
-
-    for (size_t pi=0; pi<config::NPTS; ++pi)
-    {
-        h_X0[pi] = id[pi][0];
-        h_Y0[pi] = id[pi][1];
-        h_Z0[pi] = id[pi][2];
-        h_tex_mu[pi] = tex[pi][0];
-    }
-
-    cam0.update_camera(1.0f);
-
-    VideoFitter vf(cam0, 0, 0, config::K_EPSILON,
-                   0, 0, config::K_EPSILON_L, config::TIME_T,
-                    config::USE_TEMP_SMOOTHING, config::USE_EXP_REGULARIZATION,
-                    h_X0, h_Y0, h_Z0, h_tex_mu);
 
 
 
-    // Bind texture memories
-    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    VideoFitter vf_identity(cam0,
+                            config::NID_COEFS, config::NTEX_COEFS, config::K_EPSILON,
+                            config::K_ALPHA_L, 0, config::K_EPSILON_L, config::NFRAMES,
+                            false, false);
+
+    std::vector<float> h_alphas(vf_identity.ov.Kalpha, 0.0f), h_betas(vf_identity.ov.Kbeta, 0.0f);
+
     cudaChannelFormatDesc desc = cudaCreateChannelDesc<float>();
     cudaChannelFormatDesc desc2 = cudaCreateChannelDesc<float>();
     cudaChannelFormatDesc desc3 = cudaCreateChannelDesc<float>();
 
     // Start with expression bases
-    cudaBindTexture2D(0, EX_texture, vf.r.d_EX_row_major, desc, vf.r.Kepsilon, config::NPTS, vf.r.pitch);
-    cudaBindTexture2D(0, EY_texture, vf.r.d_EY_row_major, desc, vf.r.Kepsilon, config::NPTS, vf.r.pitch);
-    cudaBindTexture2D(0, EZ_texture, vf.r.d_EZ_row_major, desc, vf.r.Kepsilon, config::NPTS, vf.r.pitch);
+    cudaBindTexture2D(0, EX_texture, vf_identity.r.d_EX_row_major, desc, config::K_EPSILON, config::NPTS, vf_identity.r.pitch);
+    cudaBindTexture2D(0, EY_texture, vf_identity.r.d_EY_row_major, desc, config::K_EPSILON, config::NPTS, vf_identity.r.pitch);
+    cudaBindTexture2D(0, EZ_texture, vf_identity.r.d_EZ_row_major, desc, config::K_EPSILON, config::NPTS, vf_identity.r.pitch);
 
-    LandmarkData ld(landmarks_path);
+    // Now identity bases
+    if (vf_identity.r.use_identity)
+    {
+        cudaBindTexture2D(0, IX_texture, vf_identity.r.d_IX_row_major, desc2, config::NID_COEFS, config::NPTS, vf_identity.r.pitch2);
+        cudaBindTexture2D(0, IY_texture, vf_identity.r.d_IY_row_major, desc2, config::NID_COEFS, config::NPTS, vf_identity.r.pitch2);
+        cudaBindTexture2D(0, IZ_texture, vf_identity.r.d_IZ_row_major, desc2, config::NID_COEFS, config::NPTS, vf_identity.r.pitch2);
+    }
 
-    VideoOutput vid_out = vf.fit_video_frames_auto(video_path, ld, &min_x, &max_x, &min_y, &max_y);
-    vid_out.save_expressions(exp_path);
-    vid_out.save_poses(pose_path, &vf.ov, &vf.rc);
-    vid_out.save_illums(illum_path);
+    // Finally the texture bases
+    if (vf_identity.r.use_texture)
+    {
+        cudaBindTexture2D(0, TEX_texture, vf_identity.r.d_TEX_row_major, desc3, config::NTEX_COEFS, config::NPTS, vf_identity.r.pitch3);
+    }
+
+    ///////////////////////////////////////////
+    ///////////////////////////////////////////
+    std::cout << "Learning the 3D identity of subject in video ... this may take a few minutes" << std::endl;
+    vf_identity.learn_identity(video_path, ld, &h_alphas[0], &h_betas[0]);
+
+    write_1d_vector<float>(shpCoeffsPath, h_alphas);
+    write_1d_vector<float>(texCoeffsPath, h_betas);
+
+    std::cout << "\tDone" << std::endl;
+    ///////////////////////////////////////////
+    ///////////////////////////////////////////
+    if (vf_identity.r.use_identity) {
+        cudaUnbindTexture(IX_texture);
+        cudaUnbindTexture(IY_texture);
+        cudaUnbindTexture(IZ_texture);
+    }
+
+    if (vf_identity.r.use_texture) {
+        cudaUnbindTexture(TEX_texture);
+    }
 
     cudaUnbindTexture(EX_texture);
     cudaUnbindTexture(EY_texture);
     cudaUnbindTexture(EZ_texture);
 
-    free(h_X0);
-    free(h_Y0);
-    free(h_Z0);
-    free(h_tex_mu);
+
+
+
+    /****
+    if (config::OUTPUT_IDENTITY) {
+        write_identity(identityPath, &h_X0[0], &h_Y0[0], &h_Z0[0]);
+        write_texture(texturePath, &h_tex_mu[0]);
+    }
+    *****/
+
+    return 1;
 }
 
 
@@ -296,6 +306,8 @@ __global__ void render_texture_basis_texture(
 
     RTEX[idx] = tex2D(TEX_texture,colix,tl[tl_i1])*alphas[rel_index] + tex2D(TEX_texture,colix,tl[tl_i2])*betas[rel_index] + tex2D(TEX_texture,colix,tl[tl_i3])*gammas[rel_index];
 }
+
+
 
 
 

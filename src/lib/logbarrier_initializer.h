@@ -29,12 +29,10 @@ __global__ void update_diagonal_of_hessian_wvector(const float *vec, float *A, u
 
 __global__ void update_diags_and_offdiags_for_expdiffs(float *A, const int T, const int Keps, const int Ktotal, const float *weight);
 
-
 __global__ void update_bottom_right_of_matrix(const float *A, float *B, const uint Asize, const uint offset);
 
 __global__ void update_gradient(const float *vec_lb, const float *vec_ub, float *gradient, uint Kvec, uint vec_offset);
 __global__ void neglogify(float *vec, const uint N);
-
 
 __global__ void compute_xyproj(const float *varx, const float phix, const float phiy, const float cx, const float cy, const float *Rp, const float *xl, const float *yl, float *xproj, float *yproj);
 
@@ -161,7 +159,7 @@ struct Logbarrier_Initializer
 
 	void evaluate_objective_function(cublasHandle_t &handle, OptimizationVariables* ov, float *obj);
 
-    void initialize_with_orthographic_t(cusolverDnHandle_t& handleDn, cublasHandle_t &handle, uint t, const float *h_xl_t, const float *h_yl_t, const float h_face_size, OptimizationVariables* ov, const std::vector<float> &xranges, const std::vector<float> &yranges);
+    void initialize_with_orthographic_t(cusolverDnHandle_t& handleDn, cublasHandle_t &handle, uint t, const float *h_xl_t, const float *h_yl_t, const float h_face_size, OptimizationVariables* ov);
 
 	void copy_from_initialized(Logbarrier_Initializer& li_initialized);
 
@@ -175,7 +173,7 @@ struct Logbarrier_Initializer
 
 	void compute_nonrigid_shape(cublasHandle_t &handle, const OptimizationVariables* ov, bool identity = true, bool expression = true);
 
-    void compute_bounds(uint t, float yaw, float pitch, float roll, const std::vector<float> &xranges, const std::vector<float> &yranges, bool skip_this_frame=false);
+    void compute_bounds(uint t, float yaw, float pitch, float roll, bool skip_this_frame=false);
 
 
 	~Logbarrier_Initializer();

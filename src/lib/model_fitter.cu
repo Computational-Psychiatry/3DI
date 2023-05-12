@@ -65,17 +65,18 @@ void get_obj_hessian_and_gradient_multiframe(Renderer& r, Optimizer& o, Logbarri
 #endif
         if (r.use_expression) {
             render_expression_basis_texture_colmajor_rotated2<<<N_unique_pixels, r.Kepsilon>>>(r.d_alphas_redundant, r.d_betas_redundant, r.d_gammas_redundant,  r.d_redundant_idx, N_unique_pixels,
-                                                                                               r.d_tl, r.d_REX, r.d_REY, r.d_REZ, r.d_triangle_idx, rc.R);
+                                                                                               r.d_tl, r.d_REX, r.d_REY, r.d_REZ, r.d_triangle_idx, rc.R,
+                                                                                               config::N_TRIANGLES, config::Nredundant);
         }
 
         if (r.use_identity) {
             render_identity_basis_texture<<<N_unique_pixels, r.Kalpha>>>(r.d_alphas_redundant, r.d_betas_redundant, r.d_gammas_redundant, r.d_redundant_idx, N_unique_pixels,
-                                                                         r.d_tl, r.d_RIX, r.d_RIY, r.d_RIZ, r.d_triangle_idx, r.Kalpha);
+                                                                         r.d_tl, r.d_RIX, r.d_RIY, r.d_RIZ, r.d_triangle_idx, r.Kalpha, config::N_TRIANGLES);
         }
 
         if (r.use_texture) {
             render_texture_basis_texture<<<N_unique_pixels, r.Kbeta>>>(r.d_alphas_redundant, r.d_betas_redundant, r.d_gammas_redundant, r.d_redundant_idx, N_unique_pixels,
-                                                                       r.d_tl, r.d_RTEX,  r.d_triangle_idx, r.Kbeta);
+                                                                       r.d_tl, r.d_RTEX,  r.d_triangle_idx, r.Kbeta, config::N_TRIANGLES);
         }
 
 #ifdef MEASURE_TIME
@@ -1211,7 +1212,7 @@ bool fit_to_multi_images_landmarks_only(const std::vector<std::vector<float> >& 
         float face_size = compute_face_size(xp, yp);
 
         li_init.set_landmarks_from_host(t, xp, yp);
-        li_init.initialize_with_orthographic_t(handleDn, handle, t, xp, yp, face_size, &ov_lb, all_xranges[t], all_yranges[t]);
+        li_init.initialize_with_orthographic_t(handleDn, handle, t, xp, yp, face_size, &ov_lb);
     }
 
     li_init.set_minimal_slack(handle, &ov_lb);
@@ -1285,7 +1286,7 @@ bool fit_to_multi_images(std::vector<Camera> &cams,
         r.set_x0_short_y0_short(t, xp, yp);
         li.set_landmarks_from_host(t, xp, yp);
         li_init.set_landmarks_from_host(t, xp, yp);
-        li_init.initialize_with_orthographic_t(handleDn, handle, t, xp, yp, face_size, &ov_lb, all_xranges[t], all_yranges[t]);
+        li_init.initialize_with_orthographic_t(handleDn, handle, t, xp, yp, face_size, &ov_lb);
     }
 
     li_init.set_minimal_slack(handle, &ov_lb);
@@ -1379,16 +1380,16 @@ bool fit_to_multi_images(std::vector<Camera> &cams,
 
     r.compute_nonrigid_shape_identityonly(handle, ov);
 
-    cudaMemcpy(h_X0, r.X0, NPTS*sizeof(float), cudaMemcpyDeviceToHost);
-    cudaMemcpy(h_Y0, r.Y0, NPTS*sizeof(float), cudaMemcpyDeviceToHost);
-    cudaMemcpy(h_Z0, r.Z0, NPTS*sizeof(float), cudaMemcpyDeviceToHost);
-    cudaMemcpy(h_tex_mu, o.d_tex, NPTS*sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(h_X0, r.X0, config::NPTS*sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(h_Y0, r.Y0, config::NPTS*sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(h_Z0, r.Z0, config::NPTS*sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(h_tex_mu, o.d_tex, config::NPTS*sizeof(float), cudaMemcpyDeviceToHost);
 
     // <!-- We'll probably need to change the below --> use the right camera (e.g., cams[t])
     r.compute_nonrigid_shape2(handle, ov, rc.R, cams[0]);
 
 
-    if (result_basepaths != NULL)
+    if (rigid_success && result_basepaths != NULL)
     {
         //for (uint time_t=0; time_t<ov.T; ++time_t) {
         for (uint time_t=0; time_t<1; ++time_t) {
@@ -1408,6 +1409,11 @@ bool fit_to_multi_images(std::vector<Camera> &cams,
             cudaMemcpy(h_variables+ov.Kalpha+ov.Kbeta+6+ov.Kepsilon+3, ov.Lintensity, 1*sizeof(float), cudaMemcpyDeviceToHost);
 
             writeArrFile<float>(h_variables, (*result_basepaths)[time_t]+".vars", 1, K_per_frame);
+#endif
+
+
+#ifdef WRITE_SPARSE_LANDMARKS
+        r.print_sparse_2Dpts((*result_basepaths)[time_t]+".pts", 1.0f/cams[0].resize_coef);
 #endif
 
             rc_linesearch.set_u_ptr(ov.u);
@@ -1563,13 +1569,12 @@ bool fit_to_single_image_autolandmarks(const std::string& im_path,
 
     li.set_landmarks_from_host(0, xp, yp);
     li_init.set_landmarks_from_host(0, xp, yp);
-    li_init.initialize_with_orthographic_t(handleDn, handle, 0, xp, yp, face_size, &ov_lb, xrange, yrange);
+    li_init.initialize_with_orthographic_t(handleDn, handle, 0, xp, yp, face_size, &ov_lb);
     li_init.set_minimal_slack(handle, &ov_lb);
 
     li_init.fit_model(handleDn, handle, &ov_lb, &ov_lb_linesearch);
     li.copy_from_initialized(li_init);
-
-    /*
+/*
     for (uint i=0; i<51; ++i)
     {
         cv::Point2f ptOrig(xp[i], yp[i]);
@@ -1579,7 +1584,7 @@ bool fit_to_single_image_autolandmarks(const std::string& im_path,
     }
 
     cv::imshow("in_model_fitter", inputImage);
-    cv::waitKey(0);*/
+    cv::waitKey(0); */
 
     HANDLE_ERROR( cudaMemcpy( ov.taux, ov_lb.taux, sizeof(float)*6*ov.T, cudaMemcpyDeviceToDevice ) );
     HANDLE_ERROR( cudaMemcpy( ov.alphas, ov_lb.alphas, sizeof(float)*ov_lb.Kalpha, cudaMemcpyDeviceToDevice ) );
@@ -1606,11 +1611,12 @@ bool fit_to_single_image_autolandmarks(const std::string& im_path,
     ushort N_unique_pixels;
 
 
-    float h_lambdas[3] = {-7.3627f, 51.1364f, 100.1784f};
+    float h_lambdas[3] = {-7.3627f, 1.1364f, 3000.1784f};
     float h_Lintensity = 0.005f;
     //	float h_Lintensity = 0.0018f;
 
     if (fit_landmarks_only) {
+        //std::cout << "FIT_LANDMRAKS_ONLY: " << li_init.fit_success << std::endl;
         return li_init.fit_success;
     }
 
@@ -1719,15 +1725,15 @@ bool update_shape_single_resize_coef(float *xp_orig, float *yp_orig, std::vector
     r.compute_nonrigid_shape_identity_and_rotation(handle, ov, rc.R, Xtmp, Ytmp, Ztmp);
     cudaMemcpy(exp_coeffs, ov.epsilons, sizeof(float)*config::K_EPSILON, cudaMemcpyDeviceToHost);
 
-    cudaMemcpy(h_X0_cur, r.X0, sizeof(float)*NPTS, cudaMemcpyDeviceToHost);
-    cudaMemcpy(h_Y0_cur, r.Y0, sizeof(float)*NPTS, cudaMemcpyDeviceToHost);
-    cudaMemcpy(h_Z0_cur, r.Z0, sizeof(float)*NPTS, cudaMemcpyDeviceToHost);
-    cudaMemcpy(h_Xr_cur, Xtmp, sizeof(float)*NPTS, cudaMemcpyDeviceToHost);
-    cudaMemcpy(h_Yr_cur, Ytmp, sizeof(float)*NPTS, cudaMemcpyDeviceToHost);
-    cudaMemcpy(h_Zr_cur, Ztmp, sizeof(float)*NPTS, cudaMemcpyDeviceToHost);
+    cudaMemcpy(h_X0_cur, r.X0, sizeof(float)*config::NPTS, cudaMemcpyDeviceToHost);
+    cudaMemcpy(h_Y0_cur, r.Y0, sizeof(float)*config::NPTS, cudaMemcpyDeviceToHost);
+    cudaMemcpy(h_Z0_cur, r.Z0, sizeof(float)*config::NPTS, cudaMemcpyDeviceToHost);
+    cudaMemcpy(h_Xr_cur, Xtmp, sizeof(float)*config::NPTS, cudaMemcpyDeviceToHost);
+    cudaMemcpy(h_Yr_cur, Ytmp, sizeof(float)*config::NPTS, cudaMemcpyDeviceToHost);
+    cudaMemcpy(h_Zr_cur, Ztmp, sizeof(float)*config::NPTS, cudaMemcpyDeviceToHost);
 
     float denom = (float) config::NRES_COEFS;
-    for (size_t pi=0; pi<NPTS; ++pi)
+    for (size_t pi=0; pi<config::NPTS; ++pi)
     {
         X0cur_vec[pi] += h_X0_cur[pi]/denom;
         Y0cur_vec[pi] += h_Y0_cur[pi]/denom;
@@ -1824,9 +1830,6 @@ bool fit_to_video_frame(float *xp_orig, float *yp_orig, std::vector<float>& xran
     int orig_width = (int) inputImage.cols;
     int orig_height = (int) inputImage.rows;
 
-
-    /*
-    */
     cv::resize(inputImage, inputImage, cv::Size(), cams[0].resize_coef, cams[0].resize_coef);
 
     float resized_width = (int) inputImage.cols;
@@ -1857,20 +1860,11 @@ bool fit_to_video_frame(float *xp_orig, float *yp_orig, std::vector<float>& xran
         // --->***<--- // PLACE COMPUTATION OF IOD HERE
         li.set_landmarks_from_host(0, xp, yp);
         li_init.set_landmarks_from_host(0, xp, yp);
-        li_init.initialize_with_orthographic_t(handleDn, handle, 0, xp, yp, face_size, &ov_lb, xrange, yrange);
+        li_init.initialize_with_orthographic_t(handleDn, handle, 0, xp, yp, face_size, &ov_lb);
         li_init.set_minimal_slack(handle, &ov_lb);
     }
 
     bool is_bb_OK = check_if_bb_OK(xp, yp);
-
-    /*
-    if (!is_bb_OK)
-    {
-        std::cout << "Skipping this ..." << std::endl;
-        return success;
-    }
-*/
-
 
     /**
       * @START COPY
@@ -1893,9 +1887,7 @@ bool fit_to_video_frame(float *xp_orig, float *yp_orig, std::vector<float>& xran
     }
     else
     {
-        li.compute_bounds(0, 1.0, 1.0, 1.0, xrange, yrange, true);
-        //        print_vector(ov.taux, 6, "rigid_params");
-        //        print_vector(ov.epsilons, K_EPSILON, "expr_params");
+        li.compute_bounds(0, 1.0, 1.0, 1.0, true);
     }
 
     /**

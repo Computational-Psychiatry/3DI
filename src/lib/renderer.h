@@ -123,7 +123,7 @@ struct Renderer
 	ushort Kalpha, Kbeta, Kepsilon;
 
 	ushort *d_inner_idx, *d_inner_idx_unique;
-	ushort *d_tl;
+    ushort *d_tl;
 
     uint *d_redundant_idx;
 

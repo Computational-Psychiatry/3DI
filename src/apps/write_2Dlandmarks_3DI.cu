@@ -35,6 +35,7 @@
 #include "preprocessing.h"
 #include "video_fitter.h"
 
+
 #include <glob.h> // glob(), globfree()
 #include <string.h> // memset()
 #include <stdexcept>
@@ -64,22 +65,26 @@ texture<float,2> IZ_texture;
 
 texture<float,2> TEX_texture;
 
+int fit_video_frames_landmarks_sparse(Camera &cam0,
+                                      const std::string& filepath,
+                                      std::vector<std::vector<float> >& selected_frame_xps,
+                                      std::vector<std::vector<float> >& selected_frame_yps,
+                                      std::vector<std::vector<float> >& selected_frame_xranges,
+                                      std::vector<std::vector<float> >& selected_frame_yranges,
+                                      std::vector< cv::Mat >& selected_frames,
+                                      int* min_x, int* max_x, int* min_y, int* max_y, int frame_offset=0);
+
 using std::vector;
-
-///data/videos/treecam/1041a/test_RA2_NA.mkv /data/videos/treecam/ML/output/ 15
-
 
 int main(int argc, char** argv)
 {
-    // /data/videos/treecam/ML/ML0001.mp4 /data/videos/treecam/ML/ML0001_TT.avi
     if (argc < 2) {
         std::cout << "You need at least one argument -- the filepath for the input video" << std::endl;
         return -1;
     }
 
-    std::string video_path(argv[1]);
-    std::string landmarks_path(argv[2]);
-    std::string config_filepath(argv[3]);
+    std::string filepath(argv[1]);
+    std::string config_filepath(argv[2]);
     config::set_params_from_YAML_file(config_filepath);
 
     if (argc < 3) {
@@ -92,33 +97,18 @@ int main(int argc, char** argv)
     //    std::string calibration_path = "./models/cameras/TreeCam_1041a.txt";
     std::string calibration_path("");
     if (argc >= 5) {
-        if (!is_float(argv[4]))
+        if (!is_float(argv[3]))
         {
-            calibration_path = argv[4];
+            calibration_path = argv[3];
             cam0.init(calibration_path);
         } else {
-            field_of_view = std::stof(argv[4]);
+            field_of_view = std::stof(argv[3]);
         }
     }
 
-
-    double FPSvid=30;
-    {
-        cv::VideoCapture tmpCap(video_path);
-    	FPSvid = tmpCap.get(cv::CAP_PROP_FPS);
-    }
-
-
-    std::string shpPath(argv[5]);
-    std::string texPath(argv[6]);
-
-    std::string exp_path(argv[7]);
-    std::string pose_path(argv[8]);
-    std::string illum_path(argv[9]);
-
     if (!cam0.initialized)
     {
-        cv::VideoCapture tmpCap(video_path);
+        cv::VideoCapture tmpCap(filepath);
 
         int video_width = tmpCap.get(cv::CAP_PROP_FRAME_WIDTH);
         int video_height = tmpCap.get(cv::CAP_PROP_FRAME_HEIGHT);
@@ -135,8 +125,7 @@ int main(int argc, char** argv)
         double angle_y = angle_x; //60.0f*M_PI/180.0; //(cam_cy/cam_cx)*angle_x;
 
         float cam_alphax = cam_cx/(tan(angle_x/2.0));
-        float cam_alphay = cam_alphax; //cam_cy/(tan(angle_y/2.0));
-
+        float cam_alphay = cam_alphax;
         cam0.init(cam_alphax, cam_alphay, cam_cx, cam_cy, false);
     }
 
@@ -152,27 +141,26 @@ int main(int argc, char** argv)
     h_tex_mu = (float*)malloc( config::NPTS*sizeof(float) );
     int min_x(0), max_x(0), min_y(0), max_y(0);
 
-    std::cout << "read identity" << std::endl;
-
-    std::vector< std::vector<float> > id = read2DVectorFromFile<float>(shpPath,  config::NPTS, 3);
-    std::vector< std::vector<float> > tex = read2DVectorFromFile<float>(texPath ,  config::NPTS, 1);
+    std::vector< std::vector<float> > id = read2DVectorFromFile<float>(argv[4],  config::NPTS, 3);
+    std::string exp_path(argv[5]), pose_path(argv[6]);
+    std::string output_landmarks_path(argv[7]);
 
     for (size_t pi=0; pi<config::NPTS; ++pi)
     {
         h_X0[pi] = id[pi][0];
         h_Y0[pi] = id[pi][1];
         h_Z0[pi] = id[pi][2];
-        h_tex_mu[pi] = tex[pi][0];
+        h_tex_mu[pi] = 0;
     }
+
+    std::cout << "read identity" << std::endl;
 
     cam0.update_camera(1.0f);
 
-    VideoFitter vf(cam0, 0, 0, config::K_EPSILON,
-                   0, 0, config::K_EPSILON_L, config::TIME_T,
-                    config::USE_TEMP_SMOOTHING, config::USE_EXP_REGULARIZATION,
-                    h_X0, h_Y0, h_Z0, h_tex_mu);
-
-
+    int T=1;
+    VideoFitter vf(cam0, 0, 0, config::K_EPSILON,0, 0, config::K_EPSILON_L, T,
+                   config::USE_TEMP_SMOOTHING, config::USE_EXP_REGULARIZATION,
+                   h_X0, h_Y0, h_Z0, h_tex_mu);
 
     // Bind texture memories
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -187,12 +175,28 @@ int main(int argc, char** argv)
     cudaBindTexture2D(0, EY_texture, vf.r.d_EY_row_major, desc, vf.r.Kepsilon, config::NPTS, vf.r.pitch);
     cudaBindTexture2D(0, EZ_texture, vf.r.d_EZ_row_major, desc, vf.r.Kepsilon, config::NPTS, vf.r.pitch);
 
-    LandmarkData ld(landmarks_path);
 
-    VideoOutput vid_out = vf.fit_video_frames_auto(video_path, ld, &min_x, &max_x, &min_y, &max_y);
-    vid_out.save_expressions(exp_path);
-    vid_out.save_poses(pose_path, &vf.ov, &vf.rc);
-    vid_out.save_illums(illum_path);
+    float h_lambdas[3] = {-7.3627f, 51.1364f, 100.1784f};
+    float h_Lintensity = 0.1;
+
+    vf.ov.set_frame(0);
+    cudaMemcpy(vf.ov.lambda, h_lambdas, sizeof(float)*3, cudaMemcpyHostToDevice);
+    cudaMemcpy(vf.ov.Lintensity, &h_Lintensity, sizeof(float), cudaMemcpyHostToDevice);
+
+    cudaMemset(vf.o.d_TEX_ID_NREF, 0, sizeof(float)*Nrender_estimated*3850*vf.ov.T);
+    cudaMemset(vf.d_cropped_face, 0, sizeof(float)*DIMX*vf.r.T*DIMY);
+    cudaMemset(vf.d_buffer_face, 0, sizeof(float)*DIMX*DIMY);
+
+
+    VideoOutput vid_out(config::K_EPSILON);
+
+    using std::vector;
+
+    std::cout << exp_path << std::endl;
+    vector<vector<float>> exp_coefs = read2DVectorFromFile_unknown_size<float>(exp_path);
+    vector<vector<float>> poses = read2DVectorFromFile_unknown_size<float>(pose_path);
+
+    vf.output_landmarks(vid_out, filepath, output_landmarks_path, &exp_coefs, &poses);
 
     cudaUnbindTexture(EX_texture);
     cudaUnbindTexture(EY_texture);
@@ -255,7 +259,8 @@ __global__ void render_identity_basis_texture(
         const float* __restrict__ alphas, const float* __restrict__ betas, const float* __restrict__ gammas,
         const uint* __restrict__ indices, const int N1, const ushort* __restrict__ tl,
         float* __restrict__ RIX, float* __restrict__ RIY, float* __restrict__ RIZ,
-        const ushort* __restrict__ triangle_idx, const ushort Kalpha, const int N_TRIANGLES)
+        const ushort* __restrict__ triangle_idx, const ushort Kalpha,
+        const int N_TRIANGLES)
 {
     const int rowix = blockIdx.x;
     const int colix = threadIdx.x;
@@ -295,6 +300,210 @@ __global__ void render_texture_basis_texture(
     const int tl_i3 = tl_i2 + N_TRIANGLES;
 
     RTEX[idx] = tex2D(TEX_texture,colix,tl[tl_i1])*alphas[rel_index] + tex2D(TEX_texture,colix,tl[tl_i2])*betas[rel_index] + tex2D(TEX_texture,colix,tl[tl_i3])*gammas[rel_index];
+}
+
+
+
+
+
+
+
+
+
+
+
+
+int fit_video_frames_landmarks_sparse(Camera &cam0,
+                                      const std::string& filepath,
+                                      std::vector<std::vector<float> >& selected_frame_xps,
+                                      std::vector<std::vector<float> >& selected_frame_yps,
+                                      std::vector<std::vector<float> >& selected_frame_xranges,
+                                      std::vector<std::vector<float> >& selected_frame_yranges,
+                                      std::vector< cv::Mat >& selected_frames,
+                                      int* min_x, int* max_x, int* min_y, int* max_y, int frame_offset)
+{
+    const std::string caffeConfigFile = "models/deploy.prototxt";
+    const std::string caffeWeightFile = "models/res10_300x300_ssd_iter_140000_fp16.caffemodel";
+
+    std::string device = "CPU";
+    std::string framework = "caffe";
+
+    Net detection_net = cv::dnn::readNetFromCaffe(caffeConfigFile, caffeWeightFile);
+    // detection_net.setPreferableBackend(DNN_BACKEND_CUDA);
+    // detection_net.setPreferableTarget(DNN_TARGET_CUDA);
+
+    std::string tfLandmarkNet("models/landmark_models/model_FAN_frozen.pb");
+    Net landmark_net = cv::dnn::readNetFromTensorflow(tfLandmarkNet);
+    landmark_net.setPreferableBackend(DNN_BACKEND_CUDA);
+    landmark_net.setPreferableTarget(DNN_TARGET_CUDA);
+
+    Net leye_net = cv::dnn::readNetFromTensorflow("models/landmark_models/m-64l64g0-64-128-5121968464leye.pb");
+    leye_net.setPreferableBackend(DNN_BACKEND_CUDA);
+    leye_net.setPreferableTarget(DNN_TARGET_CUDA);
+
+    Net reye_net = cv::dnn::readNetFromTensorflow("models/landmark_models/m-64l64g0-64-128-5121968464reye.pb");
+    reye_net.setPreferableBackend(DNN_BACKEND_CUDA);
+    reye_net.setPreferableTarget(DNN_TARGET_CUDA);
+
+    Net mouth_net = cv::dnn::readNetFromTensorflow("models/landmark_models/m-64l64g0-64-128-5121968464mouth.pb");
+    mouth_net.setPreferableBackend(DNN_BACKEND_CUDA);
+    mouth_net.setPreferableTarget(DNN_TARGET_CUDA);
+
+    Net correction_net = cv::dnn::readNetFromTensorflow("models/landmark_models/model_correction.pb");
+
+    cv::VideoCapture capture(filepath);
+    int FPS = capture.get(cv::CAP_PROP_FPS);
+
+    if( !capture.isOpened() )
+        throw "Error when reading steam_avi";
+
+    cv::Mat frame;
+
+    vector< vector<float> > all_xp_vec, all_yp_vec;
+    vector< vector<float> > all_xrange, all_yrange;
+
+    vector<float> face_sizes;
+    vector<float> minxs, minys, maxxs, maxys;
+    int idx = 0;
+    while (true) {
+        idx++;
+
+        all_xp_vec.push_back(std::vector<float>());
+        all_yp_vec.push_back(std::vector<float>());
+
+        all_xrange.push_back(std::vector<float>());
+        all_yrange.push_back(std::vector<float>());
+
+        capture >> frame;
+
+        if (frame.empty())
+            break;
+
+        if (cam0.cam_remap) {
+            cv::remap(frame, frame, cam0.map1, cam0.map2, cv::INTER_LINEAR);
+        }
+
+        if (idx == 1) {
+            if (min_x != NULL)
+                *min_x = frame.cols;
+
+            if (max_x != NULL)
+                *max_x = 0;
+
+            if (min_y != NULL)
+                *min_y = frame.rows;
+
+            if (max_y != NULL)
+                *max_y = 0;
+        }
+
+        if (idx < FPS*config::SKIP_FIRST_N_SECS)
+            continue;
+        /*
+        if (idx > 2700)
+            break;
+        */
+
+        // PUTBACK
+        //if (idx % 10 != frame_offset)
+        if ((idx % FPS*config::EVERY_N_SECS) != frame_offset)
+            continue;
+        //        if (idx % 120 != 0)
+        //            continue;
+
+        float face_size;
+
+
+        try {
+            cv::Rect ROI(-1,-1,-1,-1);
+            double face_confidence;
+            cv::Rect face_rect = detect_face_opencv(detection_net, framework, frame, &ROI, &face_confidence, true);
+            detect_landmarks_opencv(face_rect, face_confidence, landmark_net, leye_net, reye_net, mouth_net, correction_net, frame,
+                                    all_xp_vec[all_xp_vec.size()-1], all_yp_vec[all_yp_vec.size()-1], face_size,
+                    all_xrange[all_xrange.size()-1], all_yrange[all_yrange.size()-1], config::USE_LOCAL_MODELS, false);
+
+
+        }
+        catch (cv::Exception)
+        {
+            std::cout << "Skipping this one" << std::endl;
+            continue;
+        }
+
+        if (face_size == -1.0f)
+            continue;
+
+        //        cv::imshow("heyb", frame);
+        //        cv::waitKey(20);
+
+        std::vector<float>& xcur = all_xp_vec[all_xp_vec.size()-1];
+        std::vector<float>& ycur = all_yp_vec[all_yp_vec.size()-1];
+
+        if (xcur.size() == 0)
+            continue;
+
+        int cur_xmin = (int) *std::min_element(xcur.begin(), xcur.end());
+        int cur_xmax = (int) *std::max_element(xcur.begin(), xcur.end());
+
+        int cur_ymin = (int) *std::min_element(ycur.begin(), ycur.end());
+        int cur_ymax = (int) *std::max_element(ycur.begin(), ycur.end());
+
+        minxs.push_back(cur_xmin);
+        minys.push_back(cur_ymin);
+
+        maxxs.push_back(cur_xmax);
+        maxys.push_back(cur_ymax);
+
+        if (cur_xmin < *min_x)
+            *min_x = cur_xmin;
+
+        if (cur_xmax > *max_x)
+            *max_x = cur_xmax;
+
+        if (cur_ymin < *min_y)
+            *min_y = cur_ymin;
+
+        if (cur_ymax > *max_y)
+            *max_y = cur_ymax;
+
+//        std::cout << idx << std::endl;
+
+        // !PUTBACK
+        //        if (idx >= 6000)
+        //            break;
+        if (idx >= 5000)
+            break;
+        /*
+*/
+
+        face_sizes.push_back(face_size);
+//        std::cout << "face size is " << face_size << std::endl;
+    }
+
+    // The lines below compute the median face size
+    size_t ni = face_sizes.size() / 2;
+    nth_element(face_sizes.begin(), face_sizes.begin()+ni, face_sizes.end());
+    float median_face = face_sizes[ni];
+
+    nth_element(minxs.begin(), minxs.begin()+ni, minxs.end());
+    nth_element(minys.begin(), minys.begin()+ni, minys.end());
+    nth_element(maxxs.begin(), maxxs.begin()+ni, maxxs.end());
+    nth_element(maxys.begin(), maxys.begin()+ni, maxys.end());
+
+    float median_face_width = maxxs[ni]-minxs[ni];
+    float median_face_height = maxys[ni]-minys[ni];
+
+    *min_x = minxs[ni]-median_face_width/1.5;
+    *max_x = maxxs[ni]+median_face_width/1.5;
+
+    *min_y = minys[ni]-median_face_height/1.5;
+    *max_y = maxys[ni]+median_face_height/1.5;
+
+
+
+
+//    std::cout << "Cleaned everything " << std::endl;
+    return 0;
 }
 
 

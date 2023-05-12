@@ -34,23 +34,29 @@ struct VideoOutput
 {
     map<size_t, vector<vector<float>> > exp_coefs;
     map<size_t, vector<vector<float>> > poses;
+
+    map<size_t, vector<float> > illum_coeffs;
     set<int> abs_frame_ids;
 
     void add_exp_coeffs(const size_t frame_id, const vector<float> &cur_exp_coefs);
     void add_pose(const size_t frame_id, const vector<float> &cur_pose);
+    void add_illum(const size_t frame_id, const vector<float> &cur_pose);
 
 
-    std::vector<float> compute_avg_exp_coeffs(const size_t frame_id);
+    std::vector<float> compute_avg_exp_coeffs(const size_t frame_id, bool ignore_first=false);
     std::vector<float> combine_exp_coeffs(const size_t frame_id);
     std::vector<float> compute_avg_pose(const size_t frame_id);
 
+    std::vector<float> get_illum(const size_t frame_id);
+    std::vector<float> compute_avg_illum_last_k_frames(const int frame_id, const int K);
     int Kepsilon;
 
     VideoOutput(int _Kepsilon) : Kepsilon(_Kepsilon) {}
 
-    void save_expressions(const std::string& exp_filename);
+    void save_expressions(const std::string& exp_filename, bool ignore_first=false);
     void save_expressions_all(const std::string& exp_filename);
     void save_poses(const std::string& filepath, OptimizationVariables *ov=NULL, RotationComputer *rc=NULL);
+    void save_illums(const std::string& filepath);
 };
 
 
@@ -108,7 +114,7 @@ struct VideoFitter
     int min_x, max_x, min_y, max_y;
     double FPS;
 
-    int fit_video_frames_landmarks_sparse(const std::string& filepath,
+    int fit_video_frames_landmarks_sparse(const std::string& filepath, LandmarkData &ld,
                                               std::vector<std::vector<float> >& selected_frame_xps,
                                               std::vector<std::vector<float> >& selected_frame_yps,
                                               std::vector<std::vector<float> >& selected_frame_xranges,
@@ -120,35 +126,39 @@ struct VideoFitter
           const std::vector< cv::Mat >& selected_frames,
           float *h_X0, float *h_Y0, float *h_Z0, float *h_tex_mu, std::vector<std::string>* result_basepaths=NULL);
 
-    VideoOutput fit_video_frames_auto(const std::string& filepath,
-                              const std::string& outputVideoPath,
-                              int *_min_x=NULL, int *_max_x=NULL, int *_min_y=NULL, int *_max_y=NULL);
+    VideoOutput fit_video_frames_auto(const std::string& filepath, LandmarkData &landmark_data,
+                              int *_min_x=NULL, int *_max_x=NULL, int *_min_y=NULL, int *_max_y=NULL,
+                                      const std::string &exp0_path="", const std::string &pose0_path="", const std::string &illum0_path="");
 
-    bool learn_identity(const std::string &filepath, float* h_X0, float* h_Y0, float *h_Z0, float *h_tex_mu);
+
+
+    bool learn_identity(const std::string &filepath, LandmarkData &ld, float* h_alphas, float* h_betas);
 
 
     bool update_shape_single_resize_coef(float *xp_orig, float *yp_orig,
                             const cv::Mat& frame,  const uint frame_id, cv::VideoWriter *outputVideo, const std::string& outputVideoPath,
                             float& ref_face_size, float cur_resize_coef, std::vector<float>& exp_coeffs_combined);
 
-    bool update_shape_single_ref_size(InputData& id, float ref_face_size, cv::VideoWriter *outputVideo,
-                                                      const std::string& outputVideoPath,
-                                                      VideoOutput &out);
-
+    bool update_shape_single_ref_size(InputData& id, float ref_face_size, VideoOutput &out);
+    bool update_shape_single_ref_size_finetune_only(InputData &id, float ref_face_size, VideoOutput& out);
 
 
     bool output_landmarks_expression_variation(VideoOutput& out, std::string& input_path, std::string& output_landmarks_txt,
                                       vector<vector<float> >* all_exps=NULL, vector<vector<float> >* all_poses=NULL);
 
-    bool output_facial_parts(VideoOutput& out,
-                                       std::string& input_path, std::string &output_path_sleye, std::string &output_path_sreye, std::string& output_path_smouth,
-                                       vector<vector<float> >* all_exps=NULL, vector<vector<float> >* all_poses=NULL);
+    bool output_facial_parts(VideoOutput& out, std::string& video_path, std::string &output_path_sleye, std::string &output_path_sreye,
+                             std::string& output_path_smouth, vector<vector<float> >* all_exps=NULL, vector<vector<float> >* all_poses=NULL);
 
-    bool fit_to_video_frame(InputData& id);
+    bool output_landmarks(VideoOutput& out, std::string& video_path, std::string& output_landmarks_path,
+                                      vector<vector<float> >* all_exps, vector<vector<float> >* all_poses);
+
+    bool fit_to_video_frame(InputData& id, VideoOutput &out);
+    bool fit_to_video_frame_finetune_only(InputData &id, VideoOutput& out);
 
     bool visualize_3dmesh(VideoOutput& out, std::string &input_path, std::string &output_path, vector<vector<float> > *all_exps=NULL, vector<vector<float> > *all_poses=NULL);
     //bool visualize_3dmesh_novidin(VideoOutput& out, std::string &output_path, vector<vector<float> > *all_exps=NULL, vector<vector<float> > *all_poses=NULL);
-    bool visualize_texture(VideoOutput& out, std::string &input_path, std::string &output_path, vector<vector<float> > *all_exps=NULL, vector<vector<float> > *all_poses=NULL);
+    bool visualize_texture(VideoOutput& out, std::string &input_path, std::string &output_path, vector<vector<float> > *all_exps=NULL,
+                           vector<vector<float> > *all_poses=NULL, vector<vector<float> > *all_illums=NULL);
 
     bool generate_texture(int subj_id, int imwidth, const std::string& out_dir_root, const float fov_data, const float tz);
 

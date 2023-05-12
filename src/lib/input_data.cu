@@ -1,5 +1,7 @@
 #include "input_data.h"
 #include "constants.h"
+#include "preprocessing.h"
+#include "funcs.h"
 
 void InputData::add_data(const cv::Mat& frame, const std::vector<float>& xp, const std::vector<float> &yp, size_t fi, float face_size)
 {
@@ -29,7 +31,6 @@ void InputData::add_data(const cv::Mat& frame, const std::vector<float>& xp, con
 
 void InputData::get_resized_landmarks(size_t rel_frame_id, const float resize_coef, float* xp, float *yp)
 {
-
     // @@@ the landmarks will probably be already resized in the data structure
     for (int i=0; i<NLANDMARKS_51; ++i)
     {
@@ -37,6 +38,7 @@ void InputData::get_resized_landmarks(size_t rel_frame_id, const float resize_co
         yp[i] = resize_coef*(yp_origs[rel_frame_id][i]);
     }
 }
+
 
 void InputData::get_resized_frame(size_t rel_frame_id, const float resize_coef, cv::Mat& frame_dst)
 {
@@ -51,7 +53,6 @@ void InputData::get_resized_frame(size_t rel_frame_id, const float resize_coef, 
 }
 
 
-
 void InputData::clear()
 {
     frames.clear();
@@ -59,3 +60,242 @@ void InputData::clear()
     yp_origs.clear();
     abs_frame_ids.clear();
 }
+
+
+LandmarkData::LandmarkData(const std::string& landmarks_path)
+{
+    init_from_txtfile(landmarks_path);
+}
+
+
+LandmarkData::LandmarkData(const std::string &video_path, const std::string &faces_path, const std::string& landmarks_path)
+{
+    vector<vector<float> > face_rects;
+    if (std::experimental::filesystem::exists(faces_path))
+        face_rects = read2DVectorFromFile_unknown_size<float>(faces_path);
+    else
+        face_rects = detect_faces(video_path, faces_path);
+
+    vector<vector<float> > all_lmks;
+    if (std::experimental::filesystem::exists(landmarks_path))
+        all_lmks = read2DVectorFromFile_unknown_size<float>(landmarks_path);
+    else
+        all_lmks = detect_landmarks(video_path, face_rects, landmarks_path);
+
+    fill_xpypvec(all_lmks);
+}
+
+
+void LandmarkData::init_from_txtfile(const std::string &landmarks_path)
+{
+    vector<vector<float> > all_lmks = read2DVectorFromFile_unknown_size<float>(landmarks_path);
+    fill_xpypvec(all_lmks);
+
+}
+
+void LandmarkData::fill_xpypvec(vector<vector<float> > &all_lmks)
+{
+    size_t T = all_lmks.size();
+    for (size_t t=0; t<T; ++t)
+    {
+        vector<float> xp_vec, yp_vec;
+
+        for (size_t i=0; i<NLANDMARKS_51; ++i)
+        {
+            xp_vec.push_back(all_lmks[t][2*i]);
+            yp_vec.push_back(all_lmks[t][2*i+1]);
+        }
+
+        xp_vecs.push_back(xp_vec);
+        yp_vecs.push_back(yp_vec);
+    }
+}
+
+int LandmarkData::get_face_size(size_t t)
+{
+
+    vector<float> xp_vec = get_xpvec(t);
+    vector<float> yp_vec = get_ypvec(t);
+
+    //    cv::waitKey(0);
+    int cur_xmin = (int) *std::min_element(xp_vec.begin(), xp_vec.end());
+    int cur_xmax = (int) *std::max_element(xp_vec.begin(), xp_vec.end());
+
+    int cur_ymin = (int) *std::min_element(yp_vec.begin(), yp_vec.end());
+    int cur_ymax = (int) *std::max_element(yp_vec.begin(), yp_vec.end());
+
+    int face_width = cur_xmax-cur_xmin;
+    int face_height = cur_ymax-cur_ymin;
+    return (float) std::max<int>(face_width, face_height);
+}
+
+vector<vector<float> > LandmarkData::detect_faces(const std::string& filepath, const std::string& rects_filepath)
+{
+    using namespace cv::dnn;
+
+    const std::string caffeConfigFile = "models/deploy.prototxt";
+    const std::string caffeWeightFile = "models/res10_300x300_ssd_iter_140000_fp16.caffemodel";
+
+    std::string device = "CPU";
+    std::string framework = "caffe";
+
+    Net detection_net = cv::dnn::readNetFromCaffe(caffeConfigFile, caffeWeightFile);
+
+    cv::VideoWriter video_out;
+
+    cv::VideoCapture capture(filepath);
+
+    if( !capture.isOpened() )
+        throw "Error when reading steam_avi";
+
+    cv::Mat frame;
+
+    vector<float> face_sizes;
+    int idx = 0;
+    cv::Rect ROI(-1, -1, -1, -1);
+
+    vector<vector<float> > face_rects;
+
+    while (true) {
+        idx++;
+
+        vector<float> xp_vec, yp_vec;
+        vector<float> xrange, yrange;
+
+        capture >> frame;
+
+        if (frame.empty())
+            break;
+
+        if (idx < 0)
+            continue;
+
+        double face_confidence;
+        cv::Rect face_rect = detect_face_opencv(detection_net, framework, frame, &ROI, &face_confidence, true);
+        face_rects.push_back(vector<float>({(float)face_rect.x, (float)face_rect.y, (float)face_rect.width, (float)face_rect.height}));
+
+        if (idx >= config::MAX_VID_FRAMES_TO_PROCESS)
+            break;
+    }
+
+    write_2d_vector<float>(rects_filepath, face_rects);
+
+    return face_rects;
+}
+
+
+vector<vector<float> > LandmarkData::detect_landmarks(const std::string &video_filepath, const vector<vector<float> > &face_rects, const std::string &landmarks_filepath)
+{
+    using namespace cv::dnn;
+
+    vector<vector<float> > all_lmks;
+
+    const std::string caffeConfigFile = "models/deploy.prototxt";
+    const std::string caffeWeightFile = "models/res10_300x300_ssd_iter_140000_fp16.caffemodel";
+
+    std::string device = "CPU";
+    std::string framework = "caffe";
+
+    Net detection_net = cv::dnn::readNetFromCaffe(caffeConfigFile, caffeWeightFile);
+    // detection_net.setPreferableBackend(DNN_BACKEND_CUDA);
+    // detection_net.setPreferableTarget(DNN_TARGET_CUDA);
+
+    std::string tfLandmarkNet("models/landmark_models/model_FAN_frozen.pb");
+    Net landmark_net = cv::dnn::readNetFromTensorflow(tfLandmarkNet);
+    landmark_net.setPreferableBackend(DNN_BACKEND_CUDA);
+    landmark_net.setPreferableTarget(DNN_TARGET_CUDA);
+
+    Net leye_net = cv::dnn::readNetFromTensorflow("models/landmark_models/m-64l64g0-64-128-5121968464leye.pb");
+    leye_net.setPreferableBackend(DNN_BACKEND_CUDA);
+    leye_net.setPreferableTarget(DNN_TARGET_CUDA);
+
+    Net reye_net = cv::dnn::readNetFromTensorflow("models/landmark_models/m-64l64g0-64-128-5121968464reye.pb");
+    reye_net.setPreferableBackend(DNN_BACKEND_CUDA);
+    reye_net.setPreferableTarget(DNN_TARGET_CUDA);
+
+    Net mouth_net = cv::dnn::readNetFromTensorflow("models/landmark_models/m-64l64g0-64-128-5121968464mouth.pb");
+    mouth_net.setPreferableBackend(DNN_BACKEND_CUDA);
+    mouth_net.setPreferableTarget(DNN_TARGET_CUDA);
+
+    Net correction_net = cv::dnn::readNetFromTensorflow("models/landmark_models/model_correction.pb");
+
+    cv::VideoCapture capture(video_filepath);
+
+    if( !capture.isOpened() )
+        throw "Error when reading steam_avi";
+
+    cv::Mat frame;
+
+    int idx = 0;
+    cv::Rect ROI(-1, -1, -1, -1);
+    while (true) {
+        idx++;
+
+        vector<float> xp_vec, yp_vec;
+        vector<float> xrange, yrange;
+
+        if (config::PRINT_DEBUG) {
+            if (idx % config::PRINT_EVERY_N_FRAMES == 0)
+                std::cout << "Processing frame# " << idx << std::endl;
+        }
+
+        capture >> frame;
+
+        if (frame.empty())
+            break;
+
+        if (idx >= config::MAX_VID_FRAMES_TO_PROCESS)
+            break;
+
+        float face_size;
+
+        double face_confidence(0.99);
+
+        if (idx-1 >= face_rects.size()) {
+            std::cout << "WARNING: Looks like there are not enough face rectangles during landmark detection; breaking" << std::endl;
+        }
+
+        cv::Rect face_rect(face_rects[idx-1][0], face_rects[idx-1][1], face_rects[idx-1][2], face_rects[idx-1][3]);
+
+        try {
+            if (face_rect.width > 10) {
+                detect_landmarks_opencv(face_rect, face_confidence, landmark_net, leye_net, reye_net, mouth_net, correction_net, frame,
+                                        xp_vec, yp_vec, face_size, xrange, yrange, config::USE_LOCAL_MODELS, false);
+            }
+        } catch (std::exception& e)
+        {
+            std::cout << "Problem with landmark detection at frame " << idx << std::endl;
+        }
+
+        vector<float> lmks_combined;
+        for (size_t i=0; i<NLANDMARKS_51; ++i)
+        {
+            if (xp_vec.size() == 51 && yp_vec.size() == 51)
+            {
+                lmks_combined.push_back(xp_vec[i]);
+                lmks_combined.push_back(yp_vec[i]);
+            }
+            else
+            {
+                lmks_combined.push_back(0);
+                lmks_combined.push_back(0);
+            }
+        }
+
+        all_lmks.push_back(lmks_combined);
+
+        if (face_size == -1.0f)
+            continue;
+
+        if (idx > config::MAX_VID_FRAMES_TO_PROCESS)
+            break;
+    }
+
+    write_2d_vector<float>(landmarks_filepath, all_lmks);
+
+    return all_lmks;
+}
+
+
+
+

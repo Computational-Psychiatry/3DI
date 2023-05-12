@@ -10,7 +10,6 @@
 #include <string>
 #include <sstream>
 #include <numeric>
-#include "config.h"
 
 
 /*
@@ -222,7 +221,7 @@ __global__ void fill_krels2(
 
 
 
-__global__ void rotate_3d_pts(float* X, float* Y, float* Z, const float* R__)
+__global__ void rotate_3d_pts(float* X, float* Y, float* Z, const float* R__, const int NPTS)
 {
     const ushort rowix = blockIdx.x;
     const ushort colix = threadIdx.x;
@@ -273,7 +272,7 @@ __global__ void rotate_3d_pts(float* X, float* Y, float* Z, const float* R__)
 __global__ void view_transform_3d_pts_and_render_2d(const float* X0, const float* Y0, const float* Z0,
                                                     const float* R__, const float *taux__, const float *tauy__, const float *tauz__,
                                                     const float* phix__, const float* phiy__, const float* cx__, const float* cy__,
-                                                    float *X, float *Y, float *Z, float *xp, float *yp)
+                                                    float *X, float *Y, float *Z, float *xp, float *yp, const int NPTS)
 {
     const ushort rowix = blockIdx.x;
     const ushort colix = threadIdx.x;
@@ -534,7 +533,7 @@ void write_identity(const std::string& path, float* x, float *y, float *z)
 {
     std::ofstream DataFile;
     DataFile.open(path.c_str());
-    for (int i = 0; i < NPTS; i++) {
+    for (int i = 0; i < config::NPTS; i++) {
         DataFile << x[i] << ' ' << y[i] << ' ' << z[i] << std::endl;
     }
     DataFile.close();
@@ -547,7 +546,7 @@ void write_texture(const std::string& path, float* x)
 {
     std::ofstream DataFile;
     DataFile.open(path.c_str());
-    for (int i = 0; i < NPTS; i++) {
+    for (int i = 0; i < config::NPTS; i++) {
         DataFile << x[i] << std::endl;
     }
     DataFile.close();
@@ -782,7 +781,8 @@ __global__ void get_pixels_to_render(const ushort *tl, const float *xp, const fl
                                      float *alphas_redundant, float *betas_redundant, float *gammas_redundant,
                                      ushort* triangle_idx,
                                      const float *Z, float *Ztmp,
-                                     const ushort x0, const ushort y0, float* Zmins, uint* redundant_idx)
+                                     const ushort x0, const ushort y0, float* Zmins, uint* redundant_idx,
+                                     int N_TRIANGLES, uint Nredundant)
 {
     const uint rowix = blockIdx.x;
     const uint colix = threadIdx.x;

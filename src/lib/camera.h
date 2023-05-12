@@ -7,7 +7,9 @@
 #ifndef CAMERA_H_
 #define CAMERA_H_
 
+#include "constants.h"
 #include <iostream>
+#include <opencv2/videoio.hpp>
 #include <opencv2/opencv.hpp>
 
 struct Camera
@@ -79,7 +81,7 @@ struct Camera
     {
         calibration_path = cameramodel_path;
         initialized = true;
-        cam_remap = true;
+        cam_remap = false; // this is off now
         cv::Size imageSize;
 
         cv::FileStorage file(cameramodel_path, cv::FileStorage::READ);
@@ -309,6 +311,35 @@ struct Camera
             HANDLE_ERROR( cudaFree( phix ));
         if (phiy != NULL)
             HANDLE_ERROR( cudaFree( phiy ));
+    }
+};
+
+
+struct MassUndistorter
+{
+    Camera cam;
+    MassUndistorter(const std::string& calibration_path) : cam(calibration_path) {}
+
+    void undistort(const std::string& input_video_path, const std::string& output_video_path)
+    {
+        cv::VideoCapture vidIn(input_video_path);
+        cv::VideoWriter vidOut;
+
+        cv::Mat frame;
+
+        int Nframes = vidIn.get(cv::CAP_PROP_FRAME_COUNT);
+        double FPS = vidIn.get(cv::CAP_PROP_FPS);
+
+        int width = vidIn.get(cv::CAP_PROP_FRAME_WIDTH);
+        int height = vidIn.get(cv::CAP_PROP_FRAME_HEIGHT);
+        vidOut.open(output_video_path, cv::VideoWriter::fourcc('X','V','I','D'), FPS, cv::Size(width, height), true);
+
+        for (size_t fi=0; fi<Nframes; ++fi)
+        {
+            vidIn >> frame;
+            cam.undistort(frame, frame);
+            vidOut << frame;
+        }
     }
 };
 

@@ -5,10 +5,11 @@
 #include <iostream>
 #include <set>
 #include "config.h"
+#include "constants.h"
 
 namespace config
 {
-    double OPTS_DELTA = 0.6;
+    double OPTS_DELTA = 0.66;
     double OPTS_DELTA_BETA = 2.0;
 
     double REF_FACE_SIZE = 86; //120; // 84;
@@ -18,9 +19,10 @@ namespace config
 //    double CONFIDENCE_RANGE = 0.15;
 
     bool IGNORE_NOSE = false;
+    bool TWOSTAGE_ILLUM = false;
 
     int NPERMS = 10; // number of permutations of random frames used to estimate identity
-    int NMAX_FRAMES = 3500;
+    int NMAX_FRAMES = 432000; // this corresponds to 2 hours for a 60fps video
     int NTOT_RECONSTRS = 6; // 6; // 10; //10;
     int OUTPUT_IDENTITY = 0;
     int OUTPUT_VISUALS = 0;
@@ -29,6 +31,7 @@ namespace config
     int OUTPUT_EXPRESSIONS = 1;
     int OUTPUT_EXPRESSIONS_ALL = 0;
     int OUTPUT_POSES = 1;
+
 
     int NMULTICOMBS = 4; //5; //15; // Landmark
     int NSMOOTH_FRAMES = 1;
@@ -71,6 +74,13 @@ namespace config
     int TIME_T = 1;
 
     int NFRAMES_PER_ANGLE_BIN = 14;
+    int NTEX_COEFS;
+    int NID_COEFS;
+    int K_ALPHA;
+    int K_BETA;
+    int K_ALPHA_L;
+    int K_BETA_L;
+
 
 
     int PRINT_EVERY_N_FRAMES = 100;
@@ -82,27 +92,44 @@ namespace config
     int FILENAME_WITH_TIMES = 0;
     int PAINT_INNERMOUTH_BLACK = 1;
 
+    bool FINETUNE_ONLY = false;
     int FINETUNE_EXPRESSIONS = 0;
+    int NPTS;
+    int N_TRIANGLES;
+    uint Nredundant;
     float FINETUNE_COEF = 1.5f;
 
     /**
      * @brief Expression basis parameters
      */
     std::string EXP_BASIS = "GLOBAL79";
+    std::string MM = "BFM-23660";
+
 
     double OPTS_DELTA_EPS = 1.1;
 
     size_t K_EPSILON = 79;
     size_t K_EPSILON_L = 79;
+    std::string EX_PATH, EY_PATH, EZ_PATH;
+    std::string IX_PATH, IY_PATH, IZ_PATH; // identity basis (dense 3DMM)
+    std::string X0_PATH, Y0_PATH, Z0_PATH; // mean face
+    std::string TEX_PATH, TEXMU_PATH; // texture basis (dense 3DMM)
 
-    std::string EX_PATH = "models/dat_files/E/EX.dat";
-    std::string EY_PATH = "models/dat_files/E/EY.dat";
-    std::string EZ_PATH = "models/dat_files/E/EZ.dat";
+    std::string TL_PATH; // triangulation path
 
-    std::string EL_PATH = "models/dat_files/E/EL.dat";
-    std::string EL_FULL_PATH = "models/dat_files/E/EL_full.dat"; // expression basis (landmarks)
-    std::string EXP_LOWER_BOUND_PATH = "models/dat_files/E/sigma_epsilons_lower.dat";
-    std::string EXP_UPPER_BOUND_PATH = "models/dat_files/E/sigma_epsilons_upper.dat";
+    std::string SIGMA_ALPHAS_PATH, SIGMA_BETAS_PATH, SIGMA_EPS_PATH;
+    std::string AL60_PATH, AL_FULL_PATH, EL_PATH, EL_FULL_PATH; // expression basis (landmarks)
+
+    std::string EXP_LOWER_BOUND_PATH;
+    std::string EXP_UPPER_BOUND_PATH;
+    std::string P0L_PATH;
+    std::vector<uint> LIS;
+
+    int lmk_lec = 19;
+    int lmk_rec = 28;
+
+    /*
+    */
 
     /*
     void set_resize_coef(double _resize_coef)
@@ -110,6 +137,108 @@ namespace config
         RESIZE_COEF = _resize_coef;
     }
     */
+
+    void set_MM(const std::string& mm)
+    {
+        /**
+          TODO
+          this neads to be read separately for each MM
+          */
+        NID_COEFS = 199;
+        NTEX_COEFS = 199;
+        K_ALPHA = NID_COEFS;
+        K_ALPHA_L = 60;
+        K_BETA_L = 0;
+
+
+        MM = mm;
+/*
+        EX_PATH = "models/MMs/" + MM + "/E/EX.dat";
+        EY_PATH = "models/MMs/" + MM + "/E/EY.dat";
+        EZ_PATH = "models/MMs/" + MM + "/E/EZ.dat";
+
+        EL_PATH = "models/MMs/" + MM + "/E/EL.dat";
+        EL_FULL_PATH = "models/MMs/" + MM + "/E/EL_full.dat"; // expression basis (landmarks)
+        EXP_LOWER_BOUND_PATH = "models/MMs/" + MM + "/E/sigma_epsilons_lower.dat";
+        EXP_UPPER_BOUND_PATH = "models/MMs/" + MM + "/E/sigma_epsilons_upper.dat";
+*/
+        IX_PATH = "models/MMs/" + MM + "/IX.dat";
+        IY_PATH = "models/MMs/" + MM + "/IY.dat";
+        IZ_PATH = "models/MMs/" + MM + "/IZ.dat";
+
+        X0_PATH = "models/MMs/" + MM + "/X0_mean.dat";
+        Y0_PATH = "models/MMs/" + MM + "/Y0_mean.dat";
+        Z0_PATH = "models/MMs/" + MM + "/Z0_mean.dat";
+
+        TEX_PATH = "models/MMs/" + MM + "/TEX.dat";
+        TEXMU_PATH = "models/MMs/" + MM + "/tex_mu.dat";
+
+        TL_PATH = "models/MMs/" + MM + "/tl.dat";
+        AL_FULL_PATH = "models/MMs/" + MM + "/AL_full.dat";
+        AL60_PATH = "models/MMs/" + MM + "/AL_60.dat";
+
+        SIGMA_ALPHAS_PATH = "models/MMs/" + MM + "/sigma_alphas.dat";
+        SIGMA_BETAS_PATH = "models/MMs/" + MM + "/sigma_betas.dat";
+        P0L_PATH = "models/MMs/" + MM + "/p0L_mat.dat";
+
+        if (MM == "BFM-23660" || MM == "BFMmm-23660") {
+            N_TRIANGLES = 46703;
+            LIS = std::vector<uint>({19106,19413,19656,19814,19981,20671,20837,20995,21256,
+                                     21516,8161, 8175, 8184, 8190, 6758, 7602, 8201, 8802,
+                                     9641, 1831, 3759, 5049, 6086, 4545, 3515, 10455,11482,
+                                     12643,14583,12915,11881,5522, 6154, 7375, 8215, 9295,
+                                     10523,10923, 9917, 9075, 8235, 7395, 6548, 5908,7264,
+                                     8224,9184,10665,8948,8228,7508});
+        }
+        else if (MM == "BFM-14643" || MM == "BFMmm-14643")
+        {
+            N_TRIANGLES = 28694;
+            LIS = std::vector<uint>({12900, 13203, 13402, 13508, 13604, 13892, 13984, 14088, 14298, 14556, 6020, 6034, 6043, 6049, 4620, 5461, 6060, 6661, 7500, 660,
+                                     1735, 2932, 3953, 2450, 1532, 8310, 9315, 10383, 11470, 10612, 9696, 3396, 4021, 5234, 6074, 7154, 8378, 8773, 7776, 6934, 6094, 5254, 4412, 3777, 5123, 6083, 7043, 8519, 6807, 6087, 5367});
+        }
+        else if (MM == "BFM-17572" || MM == "BFMmm-17572")
+        {
+            N_TRIANGLES = 34537;
+            LIS = std::vector<uint>({15132, 15439, 15681, 15826, 15958, 16406, 16536, 16679, 16939, 17199, 6951, 6965, 6974, 6980, 5548, 6392, 6991, 7592, 8431, 897, 2552, 3839, 4876,
+                                     3335, 2315, 9245, 10272, 11429, 13092, 11694, 10671, 4312, 4944, 6165, 7005, 8085, 9313, 9713, 8707, 7865, 7025, 6185, 5338, 4698, 6054, 7014, 7974, 9455, 7738, 7018, 6298});
+        }
+        else if (MM == "BFM-17572" || MM == "BFMmm-17572")
+        {
+            N_TRIANGLES = 34537;
+            LIS = std::vector<uint>({15132, 15439, 15681, 15826, 15958, 16406, 16536, 16679, 16939, 17199, 6951, 6965, 6974, 6980, 5548, 6392, 6991, 7592, 8431, 897, 2552, 3839, 4876,
+                                     3335, 2315, 9245, 10272, 11429, 13092, 11694, 10671, 4312, 4944, 6165, 7005, 8085, 9313, 9713, 8707, 7865, 7025, 6185, 5338, 4698, 6054, 7014, 7974, 9455, 7738, 7018, 6298});
+        }
+        else if (MM == "BFMmm-18934")
+        {
+            N_TRIANGLES = 37254;
+            LIS = std::vector<uint>({16126,16433,16676,16834,16984,17497,17645,17802,18063,18323,7370,
+                                     7384,7393,7399,5967,6811,7410,8011,8850,1123,2968,4258,5295,3754,
+                                     2724,9664,10691,11852,13700,12124,11090,4731,5363,6584,7424,8504,
+                                     9732,10132,9126,8284,7444,6604,5757,5117,6473,7433,8393,9874,8157,
+                                     7437,6717});
+        }
+        else if (MM == "BFMmm-19830")
+        {
+            N_TRIANGLES = 39053;
+            LIS = std::vector<uint>({17286,17577,17765,17885,18012,18542,18668,18788,18987,19236,7882,7896,7905,7911,6479,
+                                   7323,7922,8523,9362,1586,3480,4770,5807,4266,3236, 10176,11203,12364,14269,12636,11602,
+                                   5243,5875,7096,7936,9016,10244,10644,9638,8796,7956,7116,6269,5629,6985,7945,8905,10386,8669,7949,7229});
+        }
+
+        Nredundant = N_TRIANGLES*NTMP;
+
+        std::vector<std::string> result;
+        std::stringstream ss(MM);
+        std::string item;
+
+        while (getline (ss, item, '-')) {
+            result.push_back (item);
+        }
+
+        NPTS = std::stoi(result[1]);
+        set_exp_basis(EXP_BASIS);
+    }
+
 
     void set_Ntot_recs(int _ntot_recs)
     {
@@ -166,14 +295,14 @@ namespace config
             EXP_BASIS = basis_name;
             K_EPSILON = 29;
             K_EPSILON_L = 29;
-            EX_PATH = "models/dat_files/E/EX.dat";
-            EY_PATH = "models/dat_files/E/EY.dat";
-            EZ_PATH = "models/dat_files/E/EZ.dat";
+            EX_PATH = "models/MMs/" + MM +"/E/EX.dat";
+            EY_PATH = "models/MMs/" + MM +"/E/EY.dat";
+            EZ_PATH = "models/MMs/" + MM +"/E/EZ.dat";
 
-            EL_PATH = "models/dat_files/E/EL.dat";
-            EL_FULL_PATH = "models/dat_files/E/EL_full.dat"; // expression basis (landmarks)
-            EXP_LOWER_BOUND_PATH = "models/dat_files/E/sigma_epsilons_lower.dat";
-            EXP_UPPER_BOUND_PATH = "models/dat_files/E/sigma_epsilons_upper.dat";
+            EL_PATH = "models/MMs/" + MM +"/E/EL.dat";
+            EL_FULL_PATH = "models/MMs/" + MM +"/E/EL_full.dat"; // expression basis (landmarks)
+            EXP_LOWER_BOUND_PATH = "models/MMs/" + MM +"/E/sigma_epsilons_lower.dat";
+            EXP_UPPER_BOUND_PATH = "models/MMs/" + MM +"/E/sigma_epsilons_upper.dat";
         }
         else if (basis_name == "GLOBAL79")
         {
@@ -181,14 +310,14 @@ namespace config
             EXP_BASIS = basis_name;
             K_EPSILON = 79;
             K_EPSILON_L = 79;
-            EX_PATH = "models/dat_files/E/EX_79.dat";
-            EY_PATH = "models/dat_files/E/EY_79.dat";
-            EZ_PATH = "models/dat_files/E/EZ_79.dat";
+            EX_PATH = "models/MMs/" + MM +"/E/EX_79.dat";
+            EY_PATH = "models/MMs/" + MM +"/E/EY_79.dat";
+            EZ_PATH = "models/MMs/" + MM +"/E/EZ_79.dat";
 
-            EL_PATH = "models/dat_files/E/EL_79.dat";
-            EL_FULL_PATH = "models/dat_files/E/EL_79.dat"; // expression basis (landmarks)
-            EXP_LOWER_BOUND_PATH = "models/dat_files/E/sigma_epsilons_79_lowerv2.dat";
-            EXP_UPPER_BOUND_PATH = "models/dat_files/E/sigma_epsilons_79_upperv2.dat";
+            EL_PATH = "models/MMs/" + MM +"/E/EL_79.dat";
+            EL_FULL_PATH = "models/MMs/" + MM +"/E/EL_79.dat"; // expression basis (landmarks)
+            EXP_LOWER_BOUND_PATH = "models/MMs/" + MM +"/E/sigma_epsilons_79_lowerv2.dat";
+            EXP_UPPER_BOUND_PATH = "models/MMs/" + MM +"/E/sigma_epsilons_79_upperv2.dat";
         }
         else if (basis_name == "LOCAL60")
         {
@@ -197,14 +326,14 @@ namespace config
             EXP_BASIS = basis_name;
             K_EPSILON = 60;
             K_EPSILON_L = 60;
-            EX_PATH = "models/dat_files/E/LEX_L60.dat";
-            EY_PATH = "models/dat_files/E/LEY_L60.dat";
-            EZ_PATH = "models/dat_files/E/LEZ_L60.dat";
+            EX_PATH = "models/MMs/" + MM +"/E/LEX_L60.dat";
+            EY_PATH = "models/MMs/" + MM +"/E/LEY_L60.dat";
+            EZ_PATH = "models/MMs/" + MM +"/E/LEZ_L60.dat";
 
-            EL_PATH = "models/dat_files/E/LEL_L60.dat";
-            EL_FULL_PATH = "models/dat_files/E/LEL_full_L60.dat"; // expression basis (landmarks)
-            EXP_LOWER_BOUND_PATH = "models/dat_files/E/lower_bounds_L60.dat";
-            EXP_UPPER_BOUND_PATH = "models/dat_files/E/upper_bounds_L60.dat";
+            EL_PATH = "models/MMs/" + MM +"/E/LEL_L60.dat";
+            EL_FULL_PATH = "models/MMs/" + MM +"/E/LEL_full_L60.dat"; // expression basis (landmarks)
+            EXP_LOWER_BOUND_PATH = "models/MMs/" + MM +"/E/lower_bounds_L60.dat";
+            EXP_UPPER_BOUND_PATH = "models/MMs/" + MM +"/E/upper_bounds_L60.dat";
         }
     }
 
@@ -249,6 +378,9 @@ namespace config
 
         if (keys.find("IGNORE_NOSE") != keys.end())
             file["IGNORE_NOSE"] >> IGNORE_NOSE;
+
+        if (keys.find("TWOSTAGE_ILLUM") != keys.end())
+            file["TWOSTAGE_ILLUM"] >> TWOSTAGE_ILLUM;
 
         if (keys.find("SIGMAS_FILE") != keys.end())
             file["SIGMAS_FILE"] >> SIGMAS_FILE;
@@ -370,11 +502,19 @@ namespace config
         if (keys.find("FINETUNE_EXPRESSIONS") != keys.end())
             file["FINETUNE_EXPRESSIONS"] >> FINETUNE_EXPRESSIONS;
 
+        if (keys.find("FINETUNE_ONLY") != keys.end())
+            file["FINETUNE_ONLY"] >> FINETUNE_ONLY;
+
         if (keys.find("FINETUNE_COEF") != keys.end())
             file["FINETUNE_COEF"] >> FINETUNE_COEF;
 
         if (keys.find("USE_EXPR_COMPONENT") != keys.end())
             file["USE_EXPR_COMPONENT"] >> USE_EXPR_COMPONENT;
+
+        if (keys.find("MM") != keys.end())
+            file["MM"] >> MM;
+
+        set_MM(MM);
 
         int tmp;
         file["NFRAMES_PER_ANGLE_BIN"] >> tmp;
@@ -412,6 +552,7 @@ namespace config
             ss << "F" << FINETUNE_COEF << "_";
 
         ss << NRES_COEFS << NMULTICOMBS << KERNEL_SIGMA << "P" << PAINT_INNERMOUTH_BLACK;
+        ss << MM;
 
         return ss.str();
     }

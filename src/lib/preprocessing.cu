@@ -37,7 +37,6 @@ cv::Point2f transform_pt(float px, float py, const cv::Point2f* center,
 
 void paint_innermouth_black(cv::Mat& frame, const std::vector<float>& xp_vec, const std::vector<float>& yp_vec)
 {
-
     vector<cv::Point2f> imouth_pts;
     cv::Mat blankim(frame.rows, frame.cols, CV_8U, cv::Scalar::all(0));
 
@@ -71,9 +70,9 @@ void paint_innermouth_black(cv::Mat& frame, const std::vector<float>& xp_vec, co
     float m1 = sqrtf((xp_vec[44]-xp_vec[50])*(xp_vec[44]-xp_vec[50])+(yp_vec[44]-yp_vec[50])*(yp_vec[44]-yp_vec[50]));
     float m2 = sqrtf((xp_vec[45]-xp_vec[49])*(xp_vec[45]-xp_vec[49])+(yp_vec[45]-yp_vec[49])*(yp_vec[45]-yp_vec[49]));
     float m3 = sqrtf((xp_vec[46]-xp_vec[48])*(xp_vec[46]-xp_vec[48])+(yp_vec[46]-yp_vec[48])*(yp_vec[46]-yp_vec[48]));
-    float mouth_opening_distance = face_size/config::REF_FACE_SIZE*(m1+m2+m3)/3.0f;
+    float mouth_opening_distance = (config::REF_FACE_SIZE/face_size)*(m1+m2+m3)/3.0f;
 
-    if (mouth_opening_distance > 8.0)
+    if (mouth_opening_distance > 3.0)
     {
         for( uint i = (uint)miny; i < (uint)maxy; i++ )
         {
@@ -103,7 +102,7 @@ cv::Rect detect_face_opencv(Net& detection_net, const std::string& framework, cv
     cv::Rect d;
 
     if (multiscale_start) {
-        if (prev_d->x == -1 || prev_d->y == -1) {
+        if (prev_d->x <= -1 || prev_d->y <= -1 || prev_d->width <= 10 || prev_d->height <= 10) {
             d = detectFaceOpenCVDNN_multiscale(detection_net, frame, framework, face_confidence);
         } else {
             d = detectFaceOpenCVDNN(detection_net, frame, framework, face_confidence, prev_d);
@@ -142,9 +141,11 @@ void detect_landmarks_opencv(const cv::Rect& d, double face_confidence, Net& lan
     else
     {
         int denom = 0;
-        std::vector<double> perturbsx({3, 5, -3, -5, 2, 4, -8, 6, 1, 7,-5, 8, -9, 3, 5});
-        std::vector<double> perturbsy({1, 4, -2, -4, 5,3 -7,-4, 8, 0, -5, 4, -9, 3, 0});
-        std::vector<double> perturbssize({4, 3, -2, -1, 7, 0, 3 -3, 6, 7, -4, -7, 6, 3, -9});
+
+        std::vector<double> perturbsx({0, 3, 5, -3, -5, 2, 4, -8, 6, 1, 7, -5, 8, -9, 3, 5});
+        std::vector<double> perturbsy({0, 1, 4, -2, -4, 5, 3, -7, -4, 8, 0, -5, 4, -9, 3, 0});
+        std::vector<double> perturbssize({0, 4, 3, -2, -1, 7, 0, 3, -3, 6, 7, -4, -7, 6, 3, -9});
+
 
         for (size_t i=0; i<config::NMULTICOMBS; ++i)
         {
@@ -159,8 +160,9 @@ void detect_landmarks_opencv(const cv::Rect& d, double face_confidence, Net& lan
 
             xnew = std::max<int>(xnew, 0);
             ynew = std::max<int>(ynew, 0);
-            widthnew = std::min<int>(frame.cols-xnew-1, widthnew);
-            heightnew = std::min<int>(frame.rows-ynew-1, heightnew);
+            widthnew = std::min<int>(((int)frame.cols)-xnew-1, widthnew);
+            heightnew = std::min<int>(((int)frame.rows)-ynew-1, heightnew);
+
 
             cv::Rect dcur(xnew, ynew, widthnew, heightnew);
 
@@ -223,15 +225,10 @@ void detect_landmarks_opencv(const cv::Rect& d, double face_confidence, Net& lan
 
             std::stringstream ss;
             ss << face_confidence;
-            cv::rectangle(frame, cv::Point2f(d.x, d.y), cv::Point(d.x+d.width, d.y+d.height), cv::Scalar(0, 255, 0),2, 4);
-            cv::putText(frame,ss.str(),  cv::Point2f(d.x, d.y-20), cv::FONT_HERSHEY_PLAIN, 1.75, cv::Scalar(0,0,255), 2);
-
-
-
-
-
-            cv::imshow("frame", frame);
-            cv::waitKey(1);
+            //cv::rectangle(frame, cv::Point2f(d.x, d.y), cv::Point(d.x+d.width, d.y+d.height), cv::Scalar(0, 255, 0),2, 4);
+            //cv::putText(frame,ss.str(),  cv::Point2f(d.x, d.y-20), cv::FONT_HERSHEY_PLAIN, 1.75, cv::Scalar(0,0,255), 2);
+            //cv::imshow("frame", frame);
+            //cv::waitKey(1);
         }
 
 
@@ -492,7 +489,8 @@ void detect_landmarks_opencv_single(const cv::Rect& d, double face_confidence, N
     }
     */
 
-    if (plot)
+    if (plot) // (plot)
+    //if (true) // (plot)
     {
         cv::Mat frame_clone = frame.clone();
         for (uint i=0; i<xp_vec.size(); ++i)
@@ -504,8 +502,12 @@ void detect_landmarks_opencv_single(const cv::Rect& d, double face_confidence, N
 
         std::stringstream ss;
         ss << face_confidence;
-        cv::rectangle(frame_clone, cv::Point(d.x, d.y), cv::Point(d.x+d.width, d.y+d.height), cv::Scalar(0, 255, 0),2, 4);
-        //! cv::imshow("frame_clone", frame_clone);
+        /*
+           cv::rectangle(frame_clone, cv::Point(d.x, d.y), cv::Point(d.x+d.width, d.y+d.height), cv::Scalar(0, 255, 0),2, 4);
+        cv::imshow("frame_clone", frame_clone);
+        cv::waitKey(0);
+        */
+        //cv::waitKey(1);
         //! cv::waitKey(1);
         //! cv::putText(frame_clone,ss.str(),  cv::Point(d.x, d.y-20), cv::FONT_HERSHEY_PLAIN, 1.75, cv::Scalar(0,0,255), 2);
     }
@@ -687,7 +689,11 @@ cv::Rect detectFaceOpenCVDNN_multiscale(Net detection_net, Mat &frame, string fr
     std::vector<double> confidences;
     std::vector<cv::Rect> rects;
 
-    std::vector<int> step_sizes({600});
+    //std::vector<int> step_sizes({ 400, 600});
+    //std::vector<int> step_sizes({3000});
+    std::vector<int> step_sizes({std::min<int>(frame.rows, frame.cols)});
+    //std::vector<int> step_sizes({1000});
+    //std::vector<int> step_sizes({600});
 
     for (int &step_size : step_sizes)
     {
@@ -714,7 +720,12 @@ cv::Rect detectFaceOpenCVDNN_multiscale(Net detection_net, Mat &frame, string fr
     int maximizer = std::max_element(confidences.begin(), confidences.end()) - confidences.begin();
 
     *confidence_ptr = confidences[maximizer];
-
+    /*
+    cv::Rect d = cv::Rect(rects[maximizer]); //detectFaceOpenCVDNN(detection_net, frame, framework, &face_confidence, prev_d);
+            cv::rectangle(frame, cv::Point2f(d.x, d.y), cv::Point(d.x+d.width, d.y+d.height), cv::Scalar(0, 255, 0),2, 4);
+            cv::imshow("frame", frame);
+            cv::waitKey(0);
+    */
     return cv::Rect(rects[maximizer]); //detectFaceOpenCVDNN(detection_net, frame, framework, &face_confidence, prev_d);
 }
 
@@ -754,6 +765,12 @@ cv::Rect detectFaceOpenCVDNN(Net net, Mat &frameOpenCVDNN_orig, string framework
             int y1 = static_cast<int>(detectionMat.at<float>(i, 4) * frameHeight);
             int x2 = static_cast<int>(detectionMat.at<float>(i, 5) * frameWidth);
             int y2 = static_cast<int>(detectionMat.at<float>(i, 6) * frameHeight);
+
+            if (x1 < 0 || y1 < 0)
+                continue;
+            if (x2 >= frameWidth || y2 >= frameHeight)
+                continue;
+
 
             //            cv::rectangle(copyFrameOpenCVDNN, cv::Point(x1, y1), cv::Point(x2, y2), cv::Scalar(0, 255, 0),2, 4);
             if (rect_return.x == -1) {

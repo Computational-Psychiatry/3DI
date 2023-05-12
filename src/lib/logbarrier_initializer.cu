@@ -33,8 +33,8 @@ __global__ void initialize_kernel(const float *meanx, const float *meany,
                                   const float *sigmax_orth, const float *sigmay_orth, const float *u_orth,
                                   float *taux, float *tauy, float *tauz, float *u)
 {
-//    tauz[0] = phix[0]/((sigmax_orth[0]+sigmay_orth[0])*0.5);
-    tauz[0] = phix[0]/sigmax_orth[0];
+    tauz[0] = phix[0]/((fabs(sigmax_orth[0])+fabs(sigmay_orth[0]))*0.5);
+//    tauz[0] = phix[0]/sigmax_orth[0];
 
 
     taux[0] = tauz[0]*(meanx[0]-cx[0])/phix[0];
@@ -62,8 +62,6 @@ Logbarrier_Initializer::Logbarrier_Initializer(std::vector<Camera> *_cams_ptr,  
       fit_success(false), CONFIDENCE(_CONFIDENCE),
       use_temp_smoothing(_use_temp_smoothing), use_exp_regularization(_use_exp_regularization)
 {
-    uint lis[NLANDMARKS_51] = {19106,19413,19656,19814,19981,20671,20837,20995,21256,21516,8161,8175,8184,8190,6758,7602,8201,8802,9641,1831,3759,5049,6086,4545,3515,10455,11482,12643,14583,12915,11881,5522,6154,7375,8215,9295,10523,10923,9917,9075,8235,7395,6548,5908,7264,8224,9184,10665,8948,8228,7508};
-
     face_sizes =  (float*)malloc( T*sizeof(float) );
     angle_idx =  (uint*)malloc( T*sizeof(uint) );
 
@@ -153,13 +151,11 @@ Logbarrier_Initializer::Logbarrier_Initializer(std::vector<Camera> *_cams_ptr,  
     HANDLE_ERROR( cudaMalloc( (void**)&drigid_l2weights, sizeof(float)*6 ) );
     HANDLE_ERROR( cudaMalloc( (void**)&drigid_l2weights_x2, sizeof(float)*6 ) );
 
-
-    vector< vector<float> > sigma_betas_vec =  read2DVectorFromFile<float>("models/dat_files/sigma_betas.dat", ov->Kbeta, 1);
-    //        sigma_betas_vec = read2DVectorFromFile<float>("models/dat_files/sigma_betas_alt1.dat", ov->Kalpha, 1);
+    vector< vector<float> > sigma_betas_vec =  read2DVectorFromFile<float>(config::SIGMA_BETAS_PATH, ov->Kbeta, 1);
 
     vector< vector<float> > sigma_alphas_vec;
     if (config::SIGMAS_FILE==0) {
-        sigma_alphas_vec = read2DVectorFromFile<float>("models/dat_files/sigma_alphas.dat", ov->Kalpha, 1);
+        sigma_alphas_vec = read2DVectorFromFile<float>(config::SIGMA_ALPHAS_PATH, ov->Kalpha, 1);
     } else if (config::SIGMAS_FILE == 1) {
         sigma_alphas_vec = read2DVectorFromFile<float>("models/dat_files/sigma_alphas_alt1.dat", ov->Kalpha, 1);
     } else if (config::SIGMAS_FILE == 2) {
@@ -229,18 +225,18 @@ Logbarrier_Initializer::Logbarrier_Initializer(std::vector<Camera> *_cams_ptr,  
 
     if (ov->for_landmarks)
     {
-        if (K_ALPHA_L == 40) {
+        if (config::K_ALPHA_L == 40) {
             AL_path = "models/dat_files/AL_40.dat";
-        } else if (K_ALPHA_L == 50) {
+        } else if (config::K_ALPHA_L == 50) {
             AL_path = "models/dat_files/AL_50.dat";
         } else {
-            AL_path = "models/dat_files/AL_60.dat";
+            AL_path = config::AL60_PATH;
         }
         EL_path = config::EL_PATH;
     }
     else
     {
-        AL_path = "models/dat_files/AL_full.dat";
+        AL_path = config::AL_FULL_PATH;
         EL_path = config::EL_FULL_PATH;
     }
 
@@ -360,8 +356,6 @@ Logbarrier_Initializer::Logbarrier_Initializer(std::vector<Camera> *_cams_ptr,  
 
         float fw = config::EXPR_L2_WEIGHT;
 
-//        EXP_LOWER_BOUND_PATH = "models/dat_files/E/sigma_epsilons_79_lowerv2.dat";
-//        EXP_UPPER_BOUND_PATH = "models/dat_files/E/sigma_epsilons_79_upperv2.dat";
         vector<vector<float> > initws = read2DVectorFromFile<float>(config::EXP_UPPER_BOUND_PATH, ov->Kepsilon, 1);
 
         for (size_t ei=0; ei<config::K_EPSILON; ++ei) {
@@ -441,30 +435,10 @@ Logbarrier_Initializer::Logbarrier_Initializer(std::vector<Camera> *_cams_ptr,  
     free(h_AL);
     free(h_EL);
 
-
-    if (false) // this is soon going to be history
-    {
-        vector< vector<float> > p0L_mat_vec = read2DVectorFromFile<float>("models/dat_files/p0L_mat.dat", NLANDMARKS_51, 3);
-
-        float *h_p0L_mat;
-        h_p0L_mat = vec2arr(p0L_mat_vec, NLANDMARKS_51, 3, true);
-        HANDLE_ERROR( cudaMemcpy( p0L_mat, h_p0L_mat, sizeof(float)*NLANDMARKS_51*3, cudaMemcpyHostToDevice ) );
-
-        print_matrix(p0L_mat, 3, 51);
-        for (uint testi=0; testi<51; ++testi) {
-            print_vector(r.X0_mean + lis[testi], 1, "X0");
-            print_vector(r.Y0_mean + lis[testi], 1, "Y0");
-            print_vector(r.Z0_mean + lis[testi], 1, "Z0");
-        }
-        free(h_p0L_mat);
-    }
-    else
-    {
-        for (uint landmark_i=0; landmark_i<NLANDMARKS_51; ++landmark_i) {
-            HANDLE_ERROR( cudaMemcpy( p0L_mat + landmark_i*3, r.X0_mean + lis[landmark_i], sizeof(float), cudaMemcpyHostToDevice ) );
-            HANDLE_ERROR( cudaMemcpy( p0L_mat + landmark_i*3 + 1, r.Y0_mean + lis[landmark_i], sizeof(float), cudaMemcpyHostToDevice ) );
-            HANDLE_ERROR( cudaMemcpy( p0L_mat + landmark_i*3 + 2, r.Z0_mean + lis[landmark_i], sizeof(float), cudaMemcpyHostToDevice ) );
-        }
+    for (uint landmark_i=0; landmark_i<config::LIS.size(); ++landmark_i) {
+        HANDLE_ERROR( cudaMemcpy( p0L_mat + landmark_i*3, r.X0_mean + config::LIS[landmark_i], sizeof(float), cudaMemcpyHostToDevice ) );
+        HANDLE_ERROR( cudaMemcpy( p0L_mat + landmark_i*3 + 1, r.Y0_mean + config::LIS[landmark_i], sizeof(float), cudaMemcpyHostToDevice ) );
+        HANDLE_ERROR( cudaMemcpy( p0L_mat + landmark_i*3 + 2, r.Z0_mean + config::LIS[landmark_i], sizeof(float), cudaMemcpyHostToDevice ) );
     }
 
 
@@ -1181,9 +1155,9 @@ bool Logbarrier_Initializer::fit_model(cusolverDnHandle_t& handleDn,
             //////////////////////////////
             //////////////////////////////
             //////////////////////////////
-            /*
 //            if (!use_slack)
 //            {
+            /*
                 for (uint timet=0; timet<ov->T; ++timet)
                 {
                     cv::Mat emptyFrame(cams_ptr->at(timet).h_cy*2, cams_ptr->at(timet).h_cx*2, CV_32FC3, cv::Scalar::all(255));
@@ -1897,8 +1871,7 @@ void Logbarrier_Initializer::copy_from_initialized(Logbarrier_Initializer& li_in
 void Logbarrier_Initializer::initialize_with_orthographic_t(
         cusolverDnHandle_t& handleDn, cublasHandle_t &handle, uint t,
         const float *h_xl_t, const float *h_yl_t, const float h_face_size,
-        OptimizationVariables* ov,
-        const std::vector<float>& xranges, const std::vector<float>& yranges)
+        OptimizationVariables* ov)
 {
     float yaw, pitch, roll;
     oi.fit_model(handleDn, handle, h_xl_t, h_yl_t, &yaw, &pitch, &roll);
@@ -1932,7 +1905,7 @@ void Logbarrier_Initializer::initialize_with_orthographic_t(
     }
 
 
-    compute_bounds(t, yaw, pitch, roll, xranges, yranges);
+    compute_bounds(t, yaw, pitch, roll);
 
     float h_xmean_t = thrust::reduce(h_xl_t, h_xl_t+NLANDMARKS_51, 0.0f, thrust::plus<float>())/(float)NLANDMARKS_51;
     float h_ymean_t = thrust::reduce(h_yl_t, h_yl_t+NLANDMARKS_51, 0.0f, thrust::plus<float>())/(float)NLANDMARKS_51;
@@ -2178,10 +2151,7 @@ template <typename T> int sgn(T val) {
     return (T(0) < val) - (val < T(0));
 }
 
-void Logbarrier_Initializer::compute_bounds(uint t, float yaw, float pitch, float roll,
-                                            const std::vector<float>& xranges,
-                                            const std::vector<float>& yranges,
-                                            bool skip_this_frame)
+void Logbarrier_Initializer::compute_bounds(uint t, float yaw, float pitch, float roll,bool skip_this_frame)
 {
     const float YAW_MAX = 40.0f;
     const float PITCH_MAX = 90.0f;
@@ -2233,8 +2203,6 @@ void Logbarrier_Initializer::compute_bounds(uint t, float yaw, float pitch, floa
     float h_bounds_lx[NLANDMARKS_51], h_bounds_ux[NLANDMARKS_51], h_bounds_ly[NLANDMARKS_51], h_bounds_uy[NLANDMARKS_51];
     for (uint i=0; i<NLANDMARKS_51; ++i)
     {
-        //        float data_anglesx[4] = {yaw, pitch, roll, static_cast<float>(xranges[i]/0.06f)};
-        //        float data_anglesy[4] = {yaw, pitch, roll, static_cast<float>(yranges[i]/0.06f)};
         float data_anglesx[4] = {yaw, pitch, roll, CONFIDENCE}; // 0.25 was good but probably too strict // 0.35 was also good and less strict
         float data_anglesy[4] = {yaw, pitch, roll, CONFIDENCE}; // 0.25 was good but probably too strict // 0.35 was also good and less strict
         cv::Mat input_anglesx( 1, 4, CV_32FC1, data_anglesx);
@@ -2247,7 +2215,7 @@ void Logbarrier_Initializer::compute_bounds(uint t, float yaw, float pitch, floa
         if (config::USE_LOCAL_MODELS)
             margin = 0.175f;
         else
-            margin = 0.3f;
+            margin = 0.03f;
 
         if (config::IGNORE_NOSE)
         {

@@ -31,7 +31,7 @@ __global__ void fill_diffuse_component_and_populate_texture_and_shape(const floa
 		float *tex_torender, float *dI_dlambda, float *dI_dLintensity,
 		float *vx, float *vy, float *vz, float *px, float *py, float *pz,
 		float *inv_vz, float *inv_vz2, const float *R__, const float* tau__, const float *lambda__,  const float *Lintensity__, const uint N_unique_pixels,
-		const uint Nrender_estimate, bool just_render);
+		const uint Nrender_estimate, bool just_render, int N_TRIANGLES);
 
 __global__ void fill_optimization_auxiliary_variables_phase1(const float phix, const float phiy,
 		const float *vx__, const float *vy__, const float *vz__, const float *inv_vz, const float *inv_vz2,
@@ -61,7 +61,8 @@ __global__ void fill_optimization_dI_depsilon_userotated(const float phix, const
 		const float* __restrict__ REX, const float* __restrict__ REY, const float* __restrict__ REZ,
 		float *dI_depsilons,
 		const uint N_unique_pixels,
-		const uint Kepsilon);
+        const uint Kepsilon,
+        const uint Nredundant);
 
 
 __global__ void fill_optimization_dI_dbeta(const float *RTEX,

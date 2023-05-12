@@ -9,7 +9,7 @@
 #define FUNCS_H_
 
 #include "constants.h"
-
+#include "config.h"
 
 #include <vector>
 #include <deque>
@@ -37,11 +37,8 @@
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
 
-
 // This will be defined in main.cu because it uses texture memory -- and I'm too lazy right now to make texture
 // memory accessible by files other than main.cu and measure if we lose efficiency while doing this
-
-
 
 template <typename T> T compute_std(std::vector<T> &v)
 {
@@ -126,6 +123,15 @@ template <typename T> void write_2d_vector(const std::string& filepath, const st
     DataFile.close();
 }
 
+template <typename T> void write_1d_vector(const std::string& filepath, const std::vector<T>& vec) {
+    std::ofstream DataFile;
+    DataFile.open(filepath.c_str());
+    for (int i = 0; i < vec.size(); i++) {
+        DataFile << std::setprecision(std::numeric_limits<float>::digits10 + 1)  << (T) vec[i] << std::endl;
+    }
+    DataFile.close();
+}
+
 
 template <typename T> void write_3d_reconstruction(const std::string& filepath, const std::vector<T>& X, const std::vector<T>& Y, const std::vector<T>& Z) {
     std::ofstream DataFile;
@@ -181,9 +187,9 @@ __global__ void fill_grads(
 __global__ void view_transform_3d_pts_and_render_2d(const float* X0, const float* Y0, const float* Z0, const float* R__,
                                                     const float *taux__, const float *tauy__, const float *tauz__,
                                                     const float *phix, const float *phiy, const float *cx, const float *cy,
-                                                    float *X, float *Y, float *Z, float *xp, float *yp);
+                                                    float *X, float *Y, float *Z, float *xp, float *yp, const int NPTS);
 
-__global__ void rotate_3d_pts(float* X, float* Y, float* Z, const float* R__);
+__global__ void rotate_3d_pts(float* X, float* Y, float* Z, const float* R__, const int NPTS);
 
 
 __global__ void set_xtmp(const float* search_dir, const float *x, float t_coef__, float *xtmp, const uint Ktotal);
@@ -282,9 +288,7 @@ __global__ void get_pixels_to_render(const ushort *tl, const float *xp, const fl
                                      float *alphas_redundant, float *betas_redundant, float *gammas_redundant,
                                      ushort* triangle_idx,
                                      const float *Z, float *Ztmp,
-                                     const ushort x0, const ushort y0, float *Zmins, uint *redundant_idx);
-
-
+                                     const ushort x0, const ushort y0, float *Zmins, uint *redundant_idx, int N_TRIANGLES, uint Nredundant);
 
 __global__ void populate_pixel_idx2(const ushort *pixel_idx, const uint* indices, ushort *pixel_idx2, const uint N1);
 
@@ -408,10 +412,9 @@ std::vector< std::vector<T> > read2DVectorFromFile_unknown_size(const std::strin
 }
 
 
-
 template <class T>
-std::vector< std::vector<T> > read2DVectorFromFile(const std::string& FileName,  int rows, int cols) {
-
+std::vector< std::vector<T> > read2DVectorFromFile(const std::string& FileName,  int rows, int cols)
+{
     using std::vector;
     vector<vector<T>> tl;
 
@@ -449,7 +452,8 @@ __global__ void render_expression_basis_texture_colmajor_rotated2(
         const float* __restrict__ alphas, const float* __restrict__ betas, const float* __restrict__ gammas,
         const uint* __restrict__ indices, const int Nunique_pixels, const ushort* __restrict__ tl,
         float*  __restrict__ REX, float*  __restrict__ REY, float*  __restrict__ REZ,
-        const ushort* __restrict__ triangle_idx, const float* R__);
+        const ushort* __restrict__ triangle_idx, const float* R__,
+        int N_TRIANGLES, uint Nredundant);
 
 
 
@@ -485,7 +489,7 @@ __global__ void render_identity_basis_texture(
         const float* __restrict__ alphas, const float* __restrict__ betas, const float* __restrict__ gammas,
         const uint* __restrict__ indices, const int N1, const ushort* __restrict__ tl,
         float* __restrict__ RIX, float* __restrict__ RIY, float* __restrict__ RIZ,
-        const ushort* __restrict__ triangle_idx, const ushort Kalpha);
+        const ushort* __restrict__ triangle_idx, const ushort Kalpha, const int N_TRIANGLES);
 
 
 
@@ -531,7 +535,7 @@ __global__ void elementwise_vector_multiplication(float *vec_out, const float *v
 __global__ void render_texture_basis_texture(
         const float* __restrict__ alphas, const float* __restrict__ betas, const float* __restrict__ gammas,
         const uint* __restrict__ indices, const int N1, const ushort* __restrict__ tl,
-        float* __restrict__ RTEX, const ushort* __restrict__ triangle_idx, const ushort Kbeta);
+        float* __restrict__ RTEX, const ushort* __restrict__ triangle_idx, const ushort Kbeta, const int N_TRIANGLES);
 
 
 
