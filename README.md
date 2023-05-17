@@ -1,5 +1,9 @@
 # Compiling the code
 
+
+![Before registration](build/assets/aretha.gif "Before" ) 
+
+
 Follow the steps below to compile the code
 
 1. Clone this repository somewhere in your home directory via `git clone https://github.com/Computational-Psychiatry/3DI.git`
