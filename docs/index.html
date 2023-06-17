@@ -2,169 +2,159 @@
 <html>
 
 <head>
-<style>
+	<style>
 
-body {
-  font-family: Arial, Helvetica, sans-serif;
-      background-color: rgb(255, 255, 255); 
-}
+		body {
+			font-family: Arial, Helvetica, sans-serif;
+			background-color: rgb(255, 255, 255);
+		}
+		hr {
+			border-top: 1px dotted #8c8b8b;
+			border-top: 0px dotted #8c8b8b;
+		}
+		h1 {
+			padding: 4px;
+			font-size:22pt;
+			color: rgb(60, 60, 60);
+			text-align: center;
 
-hr {
-        border-top: 1px dotted #8c8b8b;
-                border-top: 0px dotted #8c8b8b;
-}
-h1 {
+		}
+		h2 {
+			border-bottom: 1px solid #dedede;
+			background-color: rgb(250, 250, 250);
+			padding: 4px;
+			font-size:18pt;
+			color: rgb(60, 60, 60);
+		}
+		.container {
+			width: 66%;
+			margin:0 auto;
+			text-align:center;
+			justify-content: center;
+		}
 
-
-    padding: 4px;
-    font-size:22pt;
-          color: rgb(60, 60, 60);
-            text-align: center;
-
-}
-h2 {
-    border-bottom: 1px solid #dedede;     
-    background-color: rgb(250, 250, 250); 
-    padding: 4px;
-    font-size:18pt;
-          color: rgb(60, 60, 60);
-}
-.container {
-  width: 66%;
-  margin:0 auto;
-        text-align:center;
-  justify-content: center;
-}
-
-table.links
-{
-  table-layout: fixed;  margin:0 auto;
-  text-align:center;
-}
-table.links td
-{
-  padding-top: 5px;
-  padding-bottom: 5px;
-  padding-left: 30px;
-  padding-right: 30px;
-}
-.container p, ul
-{
-text-align:justify;
-font-family: Arial;
-font-size: 10.5pt;
-  color:rgb(70,70,70);
-    line-height: 1.5;
-}
-
-</style>
+		table.links {
+			table-layout: fixed;  margin:0 auto;
+			text-align:center;
+		}
+		table.links td {
+			padding-top: 5px;
+			padding-bottom: 5px;
+			padding-left: 30px;
+			padding-right: 30px;
+		}
+		.container p, ul {
+			text-align:justify;
+			font-family: Arial;
+			font-size: 10.5pt;
+			color:rgb(70,70,70);
+			line-height: 1.5;
+		}
+	</style>
 </head>
 <body>
 
+  <!-- videos are produced with the following command:
+  ffmpeg -i input.mp4 -vcodec libx264 -f mp4 -vb 1024k -preset slow output.mp4
+  !-->
+  <h1>Inequality-constrained 3D Morphable Face Model Fitting</h1>
+  <div class="container">
 
-<!-- videos are produced with the following command:
-ffmpeg -i input.mp4 -vcodec libx264 -f mp4 -vb 1024k -preset slow output.mp4
-!-->
-<h1>Inequality-constrained 3D Morphable Face Model Fitting</h1>
-<div class="container">
+  	<table width=80% style="table-layout: fixed; margin:0 auto;">
+  		<tr>
+  			<td>Evangelos Sariyanidi<sup>1</sup></td>
+  			<td>Casey J. Zampella<sup>1</sup></td>
+  			<td>Robert T. Schultz<sup>1,2</sup></td>
+  			<td>Birkan Tunc<sup>1,2</sup></td>
+  		</tr>
+  		<tr>
+  			<td colspan=4 style="text-align: center; color: rgb(120,120,120); font-size:11pt"><sup>1</sup>The Children's Hospital of Philadelphia, <sup>2</sup>University of Pennsylvania</td>
+  		</tr>
+  	</table>
+  	<hr/>
+  	<table class="links">
+  		<tr>
+  			<td><a href="#">Main page</a></td>
+  			<td><a href="#">Code (github)</a></td>
+  			<td><a href="#">Documentation</a></td>
+  			<td><a href="#">Paper</a></td>
+  			<td><a href="#">Supp. Material</a></td>
+  		</tr>
+  	</table>
+  	<hr/>
+  	<table>
+  		<tr>
+  			<td width="50%"> <p style="text-align:left;">3DI is an optimization-based 3DMM fitting (3D reconstruction) method that enforces inequality constraints on 3DMM parameters and landmarks (Figure on right). Inequality constraints significantly restrict the search space and rule out implausible solutions  (Figure below). 3DI is <b>not</b> a learning-based method, thus is more flexible; e.g., it can straighforwardly incorporate camera matrix or be adapted to an arbitrary morphable model relatively easily.
+  			</p>
+  		</td>
+  		<td width="50%"> <img src="demos/figs/main.png"  alt="Inequality constraints" style="width:95%"></td>
+  	</tr>
+  </table>
+  <!--     <img src="demos/figs/main.png"  alt="Inequality constraints" style="width:95%"> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <img src="demos/figs/constraints.png" alt="Inequality constraints" style="width:22%">-->
+  <p style="text-align:center;"></p>
+  <table>
+  	<tr>
+  		<td>
 
-<table width=80% style="table-layout: fixed; margin:0 auto;">
-<tr>
-<td>Evangelos Sariyanidi<sup>1</sup></td>
-<td>Casey J. Zampella<sup>1</sup></td>
-<td>Robert T. Schultz<sup>1,2</sup></td>
-<td>Birkan Tunc<sup>1,2</sup></td>
-</tr>
-<tr>
-<td colspan=4 style="text-align: center; color: rgb(120,120,120); font-size:11pt"><sup>1</sup>The Children's Hospital of Philadelphia, <sup>2</sup>University of Pennsylvania</td>
-</tr>
-</table>
-<hr/>
- <table class="links">
-   <tr>
-     <td><a href="#">Main page</a></td>
-     <td><a href="#">Code & installation</a></td>
-     <td><a href="#">Paper</a></td>
-     <td><a href="#">Documentation</a></td>
-   </tr>
- </table>
-<hr/>
-<table>
-<tr>
-<td width="50%"> <p style="text-align:left;">3DI is an optimization-based 3DMM fitting (3D reconstruction) method that enforces inequality constraints on 3DMM parameters and landmarks (Figure on right). Inequality constraints significantly restrict the search space and rule out implausible solutions  (Figure below). 3DI is <b>not</b> a learning-based method, thus is more flexible; e.g., it can straighforwardly incorporate camera matrix or be adapted to an arbitrary morphable model relatively easily.
- </p> 	
-</td>
-<td width="50%"> <img src="demos/figs/main.png"  alt="Inequality constraints" style="width:95%"></td>
-</tr>
-</table>
- <!--     <img src="demos/figs/main.png"  alt="Inequality constraints" style="width:95%"> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <img src="demos/figs/constraints.png" alt="Inequality constraints" style="width:22%">-->
-       <p style="text-align:center;"></p>
-<table>
-<tr>
-<td>
+  			<p>This <b>project page</b> provides demos as well as a <b>CUDA implementation</b> of 3DI. The 3DI method can be used for a variety of facial analysis tasks including</p>
+  			<ul style="text-align:left;">
+  				<li>3D face reconstruction</li>
+  				<li>Pose estimation</li>
+  				<li>Expression quantification</li>
+  				<li>2D landmark detection</li>
+  				<li>3D landmark detection</li>
+  				<ul>
+  					<li>On world coordinates (with pose and expression variation)
+  						<li>Canonicalized (i.e., pose and/or identity effect removed)
+  						</ul>
+  					</ul>
+  					<p> The details regarding the usage of 3DI to achieve the tasks above are outlined in <a href="#">Documentation</a> </p>
+  				</td>
+  				<td width="50%">
+  					<img src="demos/figs/constraints.png" alt="Inequality constraints" style="width:50%">
+  				</td>
+  			</tr>
+  		</table>
 
- <p>This <b>project page</b> provides demos as well as a <b>CUDA implementation</b> of 3DI. The 3DI method can be used for a variety of facial analysis tasks including</p>
- <ul style="text-align:left;">
-   <li>3D face reconstruction</li>
-   <li>Pose estimation</li>
-   <li>Expression quantification</li>
-   <li>2D landmark detection</li>
-   <li>3D landmark detection</li>
-   <ul>
-   	<li>On world coordinates (with pose and expression variation)
-   	<li>Canonicalized (i.e., pose and/or identity effect removed)
-   </ul>
- </ul>
-<p> The details regarding the usage of 3DI to achieve the tasks above are outlined in <a href="#">Documentation</a> </p>
-</td>
-<td width="50%">
-<img src="demos/figs/constraints.png" alt="Inequality constraints" style="width:50%">
-</td>
-</tr>
-</table>
+  	</div>
+  	<div class="container" style="background-color: white; ">
+  		<h2>Demo: Reconstructed faces</h2>
+  		<!-- videos are produced with the following command: ffmpeg -i $f -vcodec libx264 -f mp4 -vb 1024k -preset slow web_friendly/$f -->
+  		<div class="center">
+  			<video width="32%" autoplay loop controls><source src="demos/rec/dhilma_cut_3D2.mp4" type="video/mp4"/>Your browser does not support the video tag.</video>
+  			<video width="32%" autoplay loop controls><source src="demos/rec/donlemon2_cut2_3D2.mp4" type="video/mp4"/>Your browser does not support the video tag.</video>
+  			<video width="32%" autoplay loop controls><source src="demos/rec/mariacallas_cut_3D2.mp4" type="video/mp4"/>Your browser does not support the video tag.</video>
+  		</div>
+            <!--
+            <div class="center">
+            <video width="32%" autoplay loop controls><source src="demos/rec/bowie_cut2_3D2.mp4" type="video/mp4"/>Your browser does not support the video tag.</video>
+            <video width="32%" autoplay loop controls><source src="demos/rec/briannajoy_cut2_3D2.mp4" type="video/mp4"/>Your browser does not support the video tag.</video>
+            <video width="32%" autoplay loop controls><source src="demos/rec/pavarotti_cut2_3D2.mp4" type="video/mp4"/>Your browser does not support the video tag.</video>
+          </div>
+      -->
 
-    <p><!--3D morphable model (3DMM) fitting is traditionally done via unconstrained optimization with regularization terms to ensure that the result is a plausible face shape. This paper presents inequality-constrained 3DMM fitting as the first alternative to regularization in optimization-based 3DMM fitting. Inequality constraints on the 3DMM's shape coefficients ensure face-like shapes without modifying the objective function for smoothness, thus allowing for more flexibility to capture person-specific shape details. Moreover, inequality constraints on landmarks increase robustness in a way that does not require per-image tuning. We show that the proposed method stands out with its ability to estimate person-specific face shapes by jointly fitting a 3DMM to multiple frames of a person. Further, when used with a robust objective function, namely gradient correlation, the method can work ''in-the-wild'' even with a 3DMM constructed from controlled data. Lastly, we show how to use the log-barrier method to efficiently implement the method. To our knowledge, we present the first 3DMM fitting framework that requires <em>no learning</em> yet is accurate, robust and efficient. The absence of learning enables a generic solution that allows flexibility in the input image size, interchangeable morphable models, and incorporation of camera matrix.--></p>
-    
-</div>
-<div class="container" style="background-color: white; ">
-  <h2>Demo: Reconstructed faces</h2>
-  <!-- videos are produced with the following command: ffmpeg -i $f -vcodec libx264 -f mp4 -vb 1024k -preset slow web_friendly/$f -->
-  <div class="center">
-    <video width="32%" autoplay loop controls><source src="demos/rec/dhilma_cut_3D2.mp4" type="video/mp4">Your browser does not support the video tag.</video> 
-    <video width="32%" autoplay loop controls><source src="demos/rec/donlemon2_cut2_3D2.mp4" type="video/mp4">Your browser does not support the video tag.</video> 
-    <video width="32%" autoplay loop controls><source src="demos/rec/mariacallas_cut_3D2.mp4" type="video/mp4">Your browser does not support the video tag.</video> 
+      <h2>Landmarks</h2>
+      <div class="center">
+      	<video width="32%" autoplay loop controls><source src="demos/lmks/dhilma_cut_lmks.mp4" type="video/mp4"/>Your browser does not support the video tag.</video>
+      	<video width="32%" autoplay loop controls><source src="demos/lmks/elaine_cut2_lmks.mp4" type="video/mp4"/>Your browser does not support the video tag.</video>
+      	<video width="32%" autoplay loop controls><source src="demos/lmks/donlemon2_cut2_lmks.mp4" type="video/mp4"/>Your browser does not support the video tag.</video>
+      </div>
+
+      <h2> Pose-expression separation</h2>
+      <div class="center">
+      	<video width="32%" autoplay loop controls><source src="demos/rec/serena_williams_cut2_3D3.mp4" type="video/mp4"/>Your browser does not support the video tag.</video>
+      	<video width="32%" autoplay loop controls><source src="demos/rec/elaine_cut2_3D3.mp4" type="video/mp4"/>Your browser does not support the video tag.</video>
+      	<video width="32%" autoplay loop controls><source src="demos/rec/aretha_cut_3D3.mp4" type="video/mp4"/>Your browser does not support the video tag.</video>
+      </div>
+
+      <hr style="padding-top:20px"/>
+
+      <div style="padding-top:20px; padding-bottom:20px;">Copyright vs</div>
+
   </div>
-  <!--
-  <div class="center">
-    <video width="32%" autoplay loop controls><source src="demos/rec/bowie_cut2_3D2.mp4" type="video/mp4">Your browser does not support the video tag.</video> 
-    <video width="32%" autoplay loop controls><source src="demos/rec/briannajoy_cut2_3D2.mp4" type="video/mp4">Your browser does not support the video tag.</video> 
-    <video width="32%" autoplay loop controls><source src="demos/rec/pavarotti_cut2_3D2.mp4" type="video/mp4">Your browser does not support the video tag.</video> 
-  </div>
-  -->
-  
-  <h2>Landmarks</h2>
-  <div class="center">
-    <video width="32%" autoplay loop controls><source src="demos/lmks/dhilma_cut_lmks.mp4" type="video/mp4">Your browser does not support the video tag.</video> 
-    <video width="32%" autoplay loop controls><source src="demos/lmks/elaine_cut2_lmks.mp4" type="video/mp4">Your browser does not support the video tag.</video> 
-    <video width="32%" autoplay loop controls><source src="demos/lmks/donlemon2_cut2_lmks.mp4" type="video/mp4">Your browser does not support the video tag.</video> 
-  </div> 
-  
-  <h2> Pose-expression separation</h2>
-    <div class="center">
-    <video width="32%" autoplay loop controls><source src="demos/rec/serena_williams_cut2_3D3.mp4" type="video/mp4">Your browser does not support the video tag.</video> 
-    <video width="32%" autoplay loop controls><source src="demos/rec/elaine_cut2_3D3.mp4" type="video/mp4">Your browser does not support the video tag.</video> 
-    <video width="32%" autoplay loop controls><source src="demos/rec/aretha_cut_3D3.mp4" type="video/mp4">Your browser does not support the video tag.</video> 
-  </div>
-  
-<hr style="padding-top:20px"/>
-
-<div style="padding-top:20px; padding-bottom:20px;">Copyright vs</div>
-
-</div>
 
 
 
 
 </body>
 </html>
-
