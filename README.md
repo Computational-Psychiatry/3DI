@@ -1,6 +1,6 @@
 # Introduction
 
-[Example 1](./docs/gifs/don.gif)
+![Example 1](./docs/gifs/don.gif)
 
 Repository of the 3DI method for 3D face reconstruction via 3DMM fitting. The implementation is based on CUDA programming and therefore requires an NVIDIA GPU. Below we explain the how to install and run this implementation.
 
