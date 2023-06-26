@@ -10,26 +10,30 @@ import copy
 import cv2
 import sys
 
-#vp1 = '/media/v/SSD1TB/dataset/demo/output/60/BFMmm-19830.cfg11.global4.curt/donlemon2_cut2_3D2.mp4'
-#vp2 = '/media/v/SSD1TB/dataset/demo/output/60/BFMmm-19830.cfg11.global4.curt/pavarotti_cut2_3D2.mp4'
-#vp3 = '/media/v/SSD1TB/dataset/demo/output/60/BFMmm-19830.cfg11.global4.curt/elaine_cut2_3D2.mp4'
-#vp4 = '/media/v/SSD1TB/dataset/demo/output/60/BFMmm-19830.cfg11.global4.curt/mariacallas_cut_3D2.mp4'
-#vp5 = '/media/v/SSD1TB/dataset/demo/output/60/BFMmm-19830.cfg11.global4.curt/elaine_cut2_3D2.mp4'
-#vp6 = '/media/v/SSD1TB/dataset/demo/output/60/BFMmm-19830.cfg11.global4.curt/mariacallas_cut_3D2.mp4'
-#vp7 = '/media/v/SSD1TB/dataset/demo/output/60/BFMmm-19830.cfg11.global4.curt/pavarotti_cut2_3D2.mp4'
-#vp8 = '/media/v/SSD1TB/dataset/demo/output/60/BFMmm-19830.cfg11.global4.curt/elaine_cut2_3D2.mp4'
-#vp9 = '/media/v/SSD1TB/dataset/demo/output/60/BFMmm-19830.cfg11.global4.curt/mariacallas_cut_3D2.mp4'
-#sys.argv.append(vp1)
-#sys.argv.append('test1.mp4')
-
-
-Nvids = len(sys.argv)-2
-
 vps = []
-for i in range(1,len(sys.argv)-1):
-    vps.append(sys.argv[i])
+t0s = []
+tfs = []
 
-op  = sys.argv[-1]
+for i in range(1,len(sys.argv)-2, 3):
+    vps.append(sys.argv[i])
+    
+for i in range(2,len(sys.argv)-1, 3):
+    t0s.append(float(sys.argv[i]))
+    
+for i in range(3,len(sys.argv)-1, 3):
+    tfs.append(float(sys.argv[i]))
+
+Nvids = len(vps)
+
+speed = int(float(sys.argv[-2]))
+op = sys.argv[-1]
+
+print(vps)
+print(t0s)
+print(tfs)
+print(Nvids)
+print(speed)
+
 
 def rounded_rectangle(src, top_left, bottom_right, radius=1, color=255, thickness=1, line_type=cv2.LINE_AA):
     p1 = top_left
@@ -45,7 +49,6 @@ def rounded_rectangle(src, top_left, bottom_right, radius=1, color=255, thicknes
     corner_radius = int(radius * (height/2))
 
     if thickness < 0:
-
         #big rect
         top_left_main_rect = (int(p1[0] + corner_radius), int(p1[1]))
         bottom_right_main_rect = (int(p3[0] - corner_radius), int(p3[1]))
@@ -86,6 +89,10 @@ elif Nvids == 4:
     ncols = 2
     nrows = 2
     fx = fy = 0.9
+elif Nvids == 2:
+    ncols = 2
+    nrows = 1
+    fx = fy = 0.9
 elif Nvids == 6:
     ncols = 3
     nrows = 2
@@ -97,7 +104,8 @@ elif Nvids == 9:
 
 
 color = (255, 255, 255)
-image_size = (round(1080*fy), round(1920*fx), 3)
+image_size = (int(round(1080*fy)), int(round(1920*fx)), 3)
+print(image_size)
 top_left = (0, 0)
 bottom_right = (image_size[0], image_size[1])
 img = np.zeros(image_size)
@@ -144,10 +152,28 @@ def paint_edges_green(I):
 
 
 caps = [cv2.VideoCapture(vp) for vp in vps]
+final_frames = []
+Nframes_per_vid = []
+
+
+
+# Here we skip the first n frames
+for ci in range(len(caps)):
+    fps = caps[ci].get(cv2.CAP_PROP_FPS)
+    final_frames.append(fps*tfs[ci])
+    Nframes_per_vid.append(int(fps*(tfs[ci]-t0s[ci])))
+    
+    num_offset_frames = t0s[ci]*fps
+    
+    for ti in range(int(num_offset_frames)):
+        ret, frame = caps[ci].read()
+
+
 Nframes = min([int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) for cap in caps])
+Nframes_to_process = min(Nframes_per_vid)
 
 fps = caps[0].get(cv2.CAP_PROP_FPS)
-fourcc = cv2.VideoWriter_fourcc(*'mp4v') # or 'XVID', 'MJPG', etc.
+fourcc = cv2.VideoWriter_fourcc(*'MP4V') # or 'XVID', 'MJPG', etc.
 out = cv2.VideoWriter(op, fourcc, fps, (1920, 1080))
 
 gapx = 36
@@ -161,15 +187,23 @@ toth = nrows*ph+(nrows-1)*gapy
 
 ox = int((3840-totw)/2)
 oy = int((2160-toth)/2)
-
-for idx in range(50):
-    print(idx)
+terminate = False
+prevoframe = None
+prevoframe2 = None
+for idx in range(Nframes_to_process):
+    if idx % 100 == 0:
+        print(idx)   
     
     frames = []
     for cap in caps:
         ret, frame = cap.read()
+        if not ret:
+            terminate = True
+            break
         frames.append(paint_edges_green(cv2.resize(frame, None, fx=fx, fy=fy)))
     
+    if terminate:
+        break
     oframe = copy.deepcopy(bgim)
     
     ox1 = int((1-fx)*(bgim.shape[1])/2)-int(gapx/2)
@@ -192,7 +226,43 @@ for idx in range(50):
     oframe = convert_bg_to_white(oframe,oframe)
     
     oframe = cv2.resize(oframe, (1920, 1080))
-    out.write(oframe)
+    if speed == 100:
+        out.write(oframe)
+    elif speed == 50:
+        oframed = oframe.astype(np.float32)
+        if prevoframe is None and prevoframe2 is None: 
+            out.write(oframe)
+            out.write(oframe)
+        elif prevoframe2 is None:
+            out.write(oframe)
+            out.write(oframe)
+            # prevoframed = prevoframe.astype(np.float32)
+            # oframed = cv2.cvtColor(oframe,cv2.CV_32FC3)
+            # prevoframed = cv2.cvtColor(prevoframe,cv2.CV_32FC3)
+            # out.write(((oframed+prevoframed)/2.).astype(np.uint8))
+        else:
+            out.write(oframe)
+            out.write(oframe)
+            # prevoframed = prevoframe.astype(np.float32)
+            # prevoframe2d = prevoframe2.astype(np.float32)
+            # out.write(((prevoframe2d+prevoframed)/2.).astype(np.uint8))
+            # out.write(((oframed+prevoframed)/2.).astype(np.uint8))
+            
+            
+    elif speed == 33:
+        out.write(oframe)
+        out.write(oframe)
+        out.write(oframe)
+    elif speed == 25:
+        out.write(oframe)
+        out.write(oframe)
+        out.write(oframe)
+        out.write(oframe)
+        
+    prevoframe2 = prevoframe
+    prevoframe = oframe
+    
+
 
 
 for cap in caps:

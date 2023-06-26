@@ -536,10 +536,12 @@ void Renderer::render(uint t, Optimizer& o, OptimizationVariables& ov, const flo
         uint N1 = new_end_idx-d_redundant_idx;
 
     if (N1 > 2*Nrender_estimated) {
-        std::cout << "N1 is " << N1 << " which is probably too much ..." << std::endl;
+        if (config::PRINT_DEBUG)
+            std::cout << "N1 is " << N1 << " which is probably too much ..." << std::endl;
         return;
     } else if (N1 < 1000) {
-        std::cout << "N1 is " << N1 << " which is probably too little ..." << std::endl;
+        if (config::PRINT_DEBUG)
+            std::cout << "N1 is " << N1 << " which is probably too little ..." << std::endl;
         return;
     }
 
@@ -718,7 +720,8 @@ bool Renderer::compute_nonrigid_shape2(cublasHandle_t &handle, const Optimizatio
     // if face is too large, we should probably ignore this step during optimization
     if (d_iod > config::REF_FACE_SIZE*2 || d_lem > config::REF_FACE_SIZE*2 || d_rem > config::REF_FACE_SIZE*2)
     {
-        std::cout << "d_iod: " << d_iod << "//" << "d_lem: " << d_lem << " d_rem: " << d_rem << std::endl;
+        if (config::PRINT_DEBUG)
+            std::cout << "d_iod: " << d_iod << "//" << "d_lem: " << d_lem << " d_rem: " << d_rem << std::endl;
         is_face_reasonable = false;
     }
 

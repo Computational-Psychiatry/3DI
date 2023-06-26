@@ -9,11 +9,12 @@ import itertools
 # import matplotlib.pyplot as plt
 import numpy as np
 import cv2
+import os
 import sys
-import imageio
 
 vp1 = sys.argv[1] # '/media/v/SSD1TB/dataset/demo/output/20/BFMmm-19830.cfg9.global4.curt/aretha_cut_3D_sm.avi'
 op  = sys.argv[2] # '/media/v/SSD1TB/dataset/demo/output/20/BFMmm-19830.cfg9.global4.curt/aretha_cut_3D_sm.avi'
+temp_op = op.replace('.mp4', 'tmp.mp4')
 
 def rounded_rectangle(src, top_left, bottom_right, radius=1, color=255, thickness=1, line_type=cv2.LINE_AA):
 
@@ -87,30 +88,16 @@ for i in range(img.shape[0]):
         if img[i,j,0] == 0:
             py.append(i)
             px.append(j)
-            
-
-
-# def convert_bg_to_white(I):
-#     for (i,j) in itertools.product(range(I.shape[0]), range(I.shape[1])):
-#         val = I[i, j, :]
-#         if val[1] >= 190 and val[0] <= 100 and val[2] <=100:
-#             I[i, j, :] = [255, 255, 255]
-#     return I
-
 
 # bgim = cv2.imread('/home/v/Downloads/hand-painted-watercolor-pastel-sky-background/5183000.jpg')
 bgim = cv2.imread('/home/v/code/3DI/build/scripts/bg2_combined2.jpg')
 bgim = cv2.resize(bgim, (1920, 1080))
-
-# bgim[:,:,:] = 255   
 
 def convert_bg_to_white(I):
     
     u_green = np.array([111, 255, 111])
     l_green = np.array([0, 160, 0])
       
-    # u_green = np.array([104, 153, 70])
-    # l_green = np.array([30, 30, 0])
     mask = cv2.inRange(I, l_green, u_green)
     res = cv2.bitwise_and(I, I, mask = mask)
 
@@ -119,12 +106,6 @@ def convert_bg_to_white(I):
     f[:,:,1] = np.where(mask == 255, bgim[:,:,1], f[:,:,1])
     f[:,:,2] = np.where(mask == 255, bgim[:,:,2], f[:,:,2])
     return f
-    
-    # for (i,j) in itertools.product(range(I.shape[0]), range(I.shape[1])):
-    #     val = I[i, j, :]
-    #     if val[1] >= 190 and val[0] <= 100 and val[2] <=100:
-    #         I[i, j, :] = [255, 255, 255]
-    # return I
 
     
     
@@ -137,9 +118,8 @@ def paint_edges_green(I, px, py):
 cap1 = cv2.VideoCapture(vp1)
 
 fps = cap1.get(cv2.CAP_PROP_FPS)
-print(fps)
 fourcc = cv2.VideoWriter_fourcc(*'mp4v') # or 'XVID', 'MJPG', etc.
-out = cv2.VideoWriter(op, fourcc, fps, (1920, 1080))
+out = cv2.VideoWriter(temp_op, fourcc, fps, (1920, 1080))
 
 gif_fp = op.replace('.mp4', '.gif')
 gif_frames = []
@@ -177,30 +157,26 @@ while cap1.isOpened():# and cap2.isOpened():
     
     comb[offry:offry+rec1.shape[0],offrx:offrx+rec1.shape[1],:] = rec1
     comb = convert_bg_to_white(comb)
-        
-    # comb = cv2.resize(comb, None, fx=0.676056, fy=0.676056)
-    # canv = np.zeros((1080,1920,3),dtype=np.uint8)
-    # oy = int((canv.shape[0]-comb.shape[0])/2)    
-    # canv[oy:(oy+comb.shape[0]),:,:] = comb
     out.write(comb)
 
     comb = cv2.resize(comb, (480, 270))
-    # comb = convert_bg_to_white(comb2)
-    # comb = convert_bg_to_white(comb2)
     gif_frames.append(comb)
     
     # if idx == 80:
     #     break
     # out2.write(comb)
-    
+
+
 cap1.release()
 out.release()
 # out2.release()
-print(float(len(gif_frames))/fps)
-print(len(gif_frames))
 # imageio.mimsave(gif_fp, gif_frames, 'GIF', duration=30)
-
 
 # Close all windows
 cv2.destroyAllWindows()
-        
+
+os.system('ffmpeg -i %s %s 2> /dev/null' % (temp_op, op))
+os.system('rm %s' % temp_op)
+
+
+

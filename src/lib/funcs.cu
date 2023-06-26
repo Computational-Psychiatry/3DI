@@ -472,12 +472,12 @@ bool check_if_bb_OK(float *xp, float *yp)
 
     if (config::PAD_RENDERING)
     {
-        if (*x0f-xsize <= 0) {
+        if (*x0f-xsize/2 <= 0) {
             is_bb_ok = false;
             //        std::cout << "failed x test" << std::endl;
         }
 
-        if (*y0f-ysize <= 0) {
+        if (*y0f-ysize/2 <= 0) {
             //        std::cout << "failed y test" << std::endl;
             is_bb_ok = false;
         }

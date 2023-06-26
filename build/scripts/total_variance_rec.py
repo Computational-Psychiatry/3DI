@@ -8,29 +8,24 @@ Created on Tue May  9 10:31:05 2023
 import numpy as np
 import cvxpy as cp
 from time import time
-import matplotlib.pyplot as plt
 from sklearn.impute import KNNImputer
 
 import sys
 
-bpath = sys.argv[1]
+e0path = sys.argv[1]
 epath = sys.argv[2]
 morphable_model='BFMmm-19830'
 
 if len(sys.argv) > 3:
     morphable_model = sys.argv[3]
     
-e1 = np.loadtxt(bpath+'.expressions')
-p1 = np.loadtxt(bpath+'.poses')
-i1 = np.loadtxt(bpath+'.illums')
+e1 = np.loadtxt(e0path)
 
 imputer = KNNImputer(n_neighbors=2, weights="uniform")
 
 for i in range(e1.shape[1]):
     e1[:,i:i+1] = imputer.fit_transform(e1[:,i:i+1])
 
-# prec = bpath+'.poses_rec'
-# irec = bpath+'.illums_rec'
 
 li = [17286,17577,17765,17885,18012,18542,18668,18788,18987,19236,7882,7896,7905,7911,6479,7323,
       7922,8523,9362,1586,3480,4770,5807,4266,3236, 10176,11203,12364,14269,12636,11602,5243,5875,
@@ -77,7 +72,7 @@ for ti in range(num_wins):
         W = tf-t0
         lastpart = True
     
-    print('%d vs %d' % (t0, tf))
+    #print('%d vs %d' % (t0, tf))
     
     pc = p[t0:tf,:].T    
     x = cp.Variable((K,W+1-int(lastpart)))
@@ -91,7 +86,8 @@ for ti in range(num_wins):
     prob = cp.Problem(objective, constraints)
     x.value = e1[t0:tf,:].T
     
-    result = prob.solve(solver='SCS')
+    #result = prob.solve(solver='SCS')
+    result = prob.solve()
     xprev = x.value
     
     if lastpart:
@@ -103,12 +99,4 @@ ecomb = np.concatenate(es,)
 Tnew = ecomb.shape[0]
 
 np.savetxt(epath, ecomb)
-# np.savetxt(prec, p1[:Tnew, :])
-# np.savetxt(irec, i1[:Tnew, :])
-
-# plt.subplot(2,1,1)
-# plt.plot(e1)
-
-# plt.subplot(2,1,2)
-# plt.plot(ecomb)
 

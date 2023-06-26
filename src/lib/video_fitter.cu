@@ -169,7 +169,7 @@ VideoOutput VideoFitter::fit_video_frames_auto(const std::string& filepath, Land
     for( int fi=0; fi<Nframes; ++fi)
     {
         if (fi % config::PRINT_EVERY_N_FRAMES == 0)
-            std::cout << "\tframe#" << std::setw(4) << std::setfill('0') << fi << std::endl;
+            std::cout << "\tframe# " << fi << "/" << Nframes << std::endl;
 
         all_angles.push_back(std::vector<float>(9, 0.0f));
         float h_us[3] = {NAN, NAN, NAN};
@@ -336,8 +336,11 @@ VideoOutput VideoFitter::fit_video_frames_auto(const std::string& filepath, Land
                 break;
         //try { 
         } catch (std::exception& e) {
-            std::cout << " PROBLEM -- SKIPPING" << std::endl;
-            std::cout << e.what() << std::endl;
+            if (config::PRINT_DEBUG)
+            {
+                std::cout << " PROBLEM -- SKIPPING" << std::endl;
+                std::cout << e.what() << std::endl;
+            }
             ov.reset();
             ov_lb.reset();
             //!cv::waitKey(1);
@@ -1950,7 +1953,8 @@ bool VideoFitter::learn_identity(const std::string& filepath, LandmarkData& ld, 
 
     for (uint num_rec=0; num_rec<config::NTOT_RECONSTRS; ++num_rec)
     {
-        std::cout << num_rec << std::endl;
+        if (config::PRINT_DEBUG)
+            std::cout << num_rec << std::endl;
         cam0.update_camera(1.0f);
         size_t fstart = num_rec*config::NFRAMES;
         size_t fend = fstart + config::NFRAMES;
@@ -1980,8 +1984,8 @@ bool VideoFitter::learn_identity(const std::string& filepath, LandmarkData& ld, 
         bool success = fit_multiframe(cxps, cyps, cxranges, cyranges, cframes, h_X0_cur, h_Y0_cur, h_Z0_cur, h_tex_mu_cur);
 
         if (success) {
-            std::cout << "Success" << std::endl;
-
+            if (config::PRINT_DEBUG)
+                std::cout << "Success" << std::endl;
             num_used_recs += 1;
             cudaMemcpy(h_alphas_cur, ov.alphas, sizeof(float)*ov.Kalpha, cudaMemcpyDeviceToHost);
             cudaMemcpy(h_betas_cur, ov.betas,  sizeof(float)*ov.Kbeta, cudaMemcpyDeviceToHost);
@@ -2118,6 +2122,17 @@ int VideoFitter::fit_video_frames_landmarks_sparse(const std::string& filepath,
     vector<float> face_sizes;
     vector<float> minxs, minys, maxxs, maxys;
 
+    int Ntotframes = capture.get(cv::CAP_PROP_FRAME_COUNT);
+    FPS = capture.get(cv::CAP_PROP_FPS);
+
+    Ntotframes = std::min<int>(Ntotframes, ld.get_num_frames());
+
+    int N_FRAMES_TO_CONSIDER = 800;
+    int EVERY_N_FRAMES = 1;
+
+    if (Ntotframes > N_FRAMES_TO_CONSIDER)
+        EVERY_N_FRAMES = (int) (Ntotframes/N_FRAMES_TO_CONSIDER);
+
     int idx = 0;
     while (true)
     {
@@ -2153,7 +2168,9 @@ int VideoFitter::fit_video_frames_landmarks_sparse(const std::string& filepath,
             continue;
 
         // PUTBACK
-        if (idx % (int)std::round(FPS*config::EVERY_N_SECS) != 0)
+//        EVERY_N_FRAMES
+//        if (idx % (int)std::round(FPS*config::EVERY_N_SECS) != 0)
+        if (idx % EVERY_N_FRAMES != 0)
             continue;
 
         if (idx >= config::MAX_VID_FRAMES_TO_PROCESS)
