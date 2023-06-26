@@ -1,3 +1,10 @@
+Index: 
+1. [Requirements](#requirements)
+1. [Installation](#installation)
+1. [Running the code](#running-the-code)
+1. [Output format](#output-formats)
+
+
 # Requirements
 ***
 **Models**
@@ -58,7 +65,6 @@ cd build/models
 python prepare_BFM.py
 ```
 
-
 # Running the code
 ***
 
@@ -93,11 +99,11 @@ The `process_video.py` script does a series of processes on the video. Specifica
 
 The first four steps are visualized below; the blue text indicates the extension of the corresponding files
 
-<img src="docs/process_video1.png"  alt="Drawing" style="width: 800px;"/>
+<img src="process_video1.png"  alt="Drawing" style="width: 800px;"/>
 
 The 2D landmarks estimated by 3DI are also produced optionally based on the files produced above.
 
-<img src="docs/process_video3.png"  alt="Drawing" style="width: 400px;"/>
+<img src="process_video3.png"  alt="Drawing" style="width: 400px;"/>
 
 
 # Output Formats
@@ -106,6 +112,5 @@ Below are the extensions some of the output files provided by 3DI video analysis
 * `.expressions_smooth`: A text file that contains all the expression coefficients of the video. That is, the file contains a `Tx79` matrix, where the `t`th row contains the 79 expression coefficients of the expression (PCA) model
 * `.poses_smooth`: A text file that contains all the poses coefficients of the video. The file contains a `Tx9` matrix, where the **first 3 columns** contain the the 3D translation `(tx, ty, tz)` for all the `T` frames of the video and the **last 3 columns** of the matrix contain the rotation (`yaw, pitch, roll`) for all the `T` frames. 
 * `.2Dlandmarks`: A text file with the 51 landmarks corresponding to the inner face (see below), as predicted by 3DI. The file contains a matrix of size `Tx102`, where each row is of the format: `x0 y0 x1 y1 ... x51 y51`.
-<img src="docs/landmarks.png"  alt="Landmarks" style="width: 450px;"/>
-
+<img src="landmarks.png"  alt="Landmarks" style="width: 450px;"/>
 
