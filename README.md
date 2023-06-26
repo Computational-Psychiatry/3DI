@@ -1,6 +1,6 @@
 # Introduction
 
-<img src="./docs/gifs/don.gif" width="320"/>
+<img src="./docs/gifs/don.gif" width="320"/> <img src="./docs/gifs/dhilma.gif" width="320"/>
 
 Repository of the 3DI method for 3D face reconstruction via 3DMM fitting. The implementation is based on CUDA programming and therefore requires an NVIDIA GPU. Below we explain the how to install and run this implementation.
 
@@ -119,5 +119,5 @@ Below are the extensions some of the output files provided by 3DI video analysis
 * `.expressions_smooth`: A text file that contains all the expression coefficients of the video. That is, the file contains a `Tx79` matrix, where the `t`th row contains the 79 expression coefficients of the expression (PCA) model
 * `.poses_smooth`: A text file that contains all the poses coefficients of the video. The file contains a `Tx9` matrix, where the **first 3 columns** contain the the 3D translation `(tx, ty, tz)` for all the `T` frames of the video and the **last 3 columns** of the matrix contain the rotation (`yaw, pitch, roll`) for all the `T` frames. 
 * `.2Dlandmarks`: A text file with the 51 landmarks corresponding to the inner face (see below), as predicted by 3DI. The file contains a matrix of size `Tx102`, where each row is of the format: `x0 y0 x1 y1 ... x51 y51`.
-<img src="landmarks.png"  alt="Landmarks" style="width: 450px;"/>
+<img src="./docs/landmarks.png"  alt="Landmarks" style="width: 450px;"/>
 
