@@ -140,7 +140,7 @@ Note that the main script for videos (`process_video.py`) includes a number of o
         <tr><td>Landmark detection<sup>&#8224;</sup></td>	<td colspan=2 style="text-align:center;">137.92</td><td>ms per frame</td></tr>
         <tr><td>Identity learning<sup>&#8224;</sup></td>	<td>95542</td><td>62043</td><td>ms per <em>video</em></td></tr>
         <tr><td>3D reconstruction<sup>&#8224;</sup></td>	<td>331.72</td><td>71.27</td><td>ms per frame</td></tr>
-        <tr><td>Smoothing</td>		<td>82.84</td><td>199.35</td><td>ms per frame</td></tr>
+        <tr><td>Smoothing</td>		<td colspan=2 style="text-align:center;">82.84</td><td>ms per frame</td></tr>
         <tr><td>Production of 3D reconstruction videos</td>	<td colspan=2 style="text-align:center;">199.35</td><td>ms per frame</td></tr>
         <tr><td>Production of 2D landmark videos</td>		<td colspan=2 style="text-align:center;">32.70</td><td>ms per frame</td></tr>
     </tbody>
