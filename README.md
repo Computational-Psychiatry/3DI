@@ -134,7 +134,7 @@ Note that the main script for videos (`process_video.py`) includes a number of o
 
 ### Average processing times
 <table>
-        <tr><th></th><th>Config. 1</th><th> Config. 2</th></tr>
+        <tr><th></th><th>Config. 1</th><th> Config. 2</th><td>Time unit</td></tr>
     <tbody>
         <tr><td>Face detection<sup>&#8224;</sup></td>	<td colspan=2 style="text-align:center;">18.83</td><td>ms per frame</td></tr>
         <tr><td>Landmark detection<sup>&#8224;</sup></td>	<td colspan=2 style="text-align:center;">137.92</td><td>ms per frame</td></tr>
