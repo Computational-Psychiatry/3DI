@@ -1,7 +1,8 @@
 # Introduction
 
+<p align="center">
 <img src="./docs/gifs/don.gif" width="320"/> <img src="./docs/gifs/dhilma.gif" width="320"/>
-
+</p>
 Repository of the 3DI method for 3D face reconstruction via 3DMM fitting. The implementation is based on CUDA programming and therefore requires an NVIDIA GPU. Below we explain the how to install and run this implementation.
 
 ### Table of contents: 
@@ -47,7 +48,7 @@ chmod +x builder.sh
 Install the necessary packages via pip. It is advised to use a virtual environment by running
 ```
 cd build
-python -m venv env
+python3 -m venv env
 source env/bin/activate
 ```
 
@@ -68,7 +69,7 @@ build/models/raw/Exp_Pca.bin
 Then run the following python script to adapt these models to the 3DI code:
 ```
 cd build/models
-python prepare_BFM.py
+python3 prepare_BFM.py
 ```
 
 Also, you need to unpack the landmark models etc. in the same directory
