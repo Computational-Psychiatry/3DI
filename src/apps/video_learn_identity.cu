@@ -85,6 +85,8 @@ int main(int argc, char** argv)
         return -1;
     }
 
+    config::OPTS_DELTA_EPS = 0.4f;
+
     std::string video_path(argv[1]);
     std::string landmarks_path(argv[2]);
     std::string config_filepath(argv[3]);
