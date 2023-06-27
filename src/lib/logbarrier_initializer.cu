@@ -156,10 +156,6 @@ Logbarrier_Initializer::Logbarrier_Initializer(std::vector<Camera> *_cams_ptr,  
     vector< vector<float> > sigma_alphas_vec;
     if (config::SIGMAS_FILE==0) {
         sigma_alphas_vec = read2DVectorFromFile<float>(config::SIGMA_ALPHAS_PATH, ov->Kalpha, 1);
-    } else if (config::SIGMAS_FILE == 1) {
-        sigma_alphas_vec = read2DVectorFromFile<float>("models/dat_files/sigma_alphas_alt1.dat", ov->Kalpha, 1);
-    } else if (config::SIGMAS_FILE == 2) {
-        sigma_alphas_vec = read2DVectorFromFile<float>("models/dat_files/sigma_alphas_alt2.dat", ov->Kalpha, 1);
     }
 
 
@@ -225,13 +221,7 @@ Logbarrier_Initializer::Logbarrier_Initializer(std::vector<Camera> *_cams_ptr,  
 
     if (ov->for_landmarks)
     {
-        if (config::K_ALPHA_L == 40) {
-            AL_path = "models/dat_files/AL_40.dat";
-        } else if (config::K_ALPHA_L == 50) {
-            AL_path = "models/dat_files/AL_50.dat";
-        } else {
-            AL_path = config::AL60_PATH;
-        }
+        AL_path = config::AL60_PATH;
         EL_path = config::EL_PATH;
     }
     else

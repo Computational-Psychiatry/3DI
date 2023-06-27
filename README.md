@@ -49,7 +49,6 @@ Install the necessary packages via pip. It is advised to use a virtual environme
 cd build
 python -m venv env
 source env/bin/activate
-
 ```
 
 The necessary packages can simply be installed by running.
@@ -70,6 +69,11 @@ Then run the following python script to adapt these models to the 3DI code:
 ```
 cd build/models
 python prepare_BFM.py
+```
+
+Also, you need to unpack the landmark models etc.
+```
+tar -xvzf lmodels.tar.gz
 ```
 
 # Running the code
