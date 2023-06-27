@@ -35,7 +35,11 @@ The following python packages are also needed, but these can be installed by fol
 
 
 ### 1) Compile CUDA code
-Clone the git repository and compile the CUDA code as below
+Clone the git repository 
+```
+git clone https://github.com/Computational-Psychiatry/3DI.git
+```
+and compile the CUDA code as below
 
 ```
 cd build 
