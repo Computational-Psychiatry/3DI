@@ -216,7 +216,7 @@ def process_single_video(vid_fpath0, landmark_model, out_dir_base, camera_param,
     # texture_path = '%s/%s_texture.avi' % (out_dir, bbn)
     render3ds_path = '%s/%s_3D_pose-exp-greenbg.avi' % (out_dir, bbn)
     texturefs_path = '%s/%s_texture_sm.avi' % (out_dir, bbn)
-    render3d2_path = '%s/%s_3D_exp.mp4' % (out_dir, bbn)
+    render3d2_path = '%s/%s_3D_comb.mp4' % (out_dir, bbn)
     render3d3_path = '%s/%s_3D_pose-exp.mp4' % (out_dir, bbn)
     lmks_video_path = '%s/%s_lmks.mp4' % (out_dir, bbn)
     

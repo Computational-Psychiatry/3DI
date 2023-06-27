@@ -1,7 +1,7 @@
 %YAML:1.0
 ---
 EXP_BASIS: "GLOBAL79"
-OPTS_DELTA_EPS: 1.8
+OPTS_DELTA_EPS: 1.75
 OPTS_DELTA_BETA: 0.4
 # Inequality constraints for shape identity and texture
 OPTS_DELTA: 0.7
