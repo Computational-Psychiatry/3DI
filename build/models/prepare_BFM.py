@@ -254,11 +254,11 @@ def prepare_morphable_model():
     ext = 'mm'
     tdir = './MMs/BFM%s-%05d' % (ext, Nnew)
     if not os.path.exists(tdir):
-        os.mkdir(tdir)
+        os.makedirs(tdir)
         
     tdirE = './MMs/BFM%s-%05d/E' % (ext, Nnew)
     if not os.path.exists(tdirE):
-        os.mkdir(tdirE)
+        os.makedirs(tdirE)
         
     iod = np.abs(X0[lis[28]]-X0[lis[19]])
     coef = 89/iod
