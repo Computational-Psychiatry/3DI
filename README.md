@@ -71,7 +71,7 @@ cd build/models
 python prepare_BFM.py
 ```
 
-Also, you need to unpack the landmark models etc.
+Also, you need to unpack the landmark models etc. in the same directory
 ```
 tar -xvzf lmodels.tar.gz
 ```
