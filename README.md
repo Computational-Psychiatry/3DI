@@ -49,11 +49,12 @@ chmod +x builder.sh
 
 ### 2) Install python packages
 
-Install the necessary packages via pip. It is advised to use a virtual environment by running
+Install the necessary packages via pip. It is advised to use a virtual environment by running and update pip
 ```
 cd build
 python3 -m venv env
 source env/bin/activate
+pip install --upgrade pip
 ```
 
 The necessary packages can simply be installed by running.
