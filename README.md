@@ -1,4 +1,4 @@
-# Introduction
+## Introduction
 
 <p align="center">
 <img src="./docs/gifs/don.gif" width="320"/> <img src="./docs/gifs/dhilma.gif" width="320"/>
@@ -110,12 +110,12 @@ The `process_video.py` script does a series of processes on the video. Specifica
 1. 3D (neutral) identity parameter estimation via 3DI (using a subset of frames from the videos)
 1. Frame-by-frame 3D reconstruction via 3DI (identity parameters are fixed here to the ones produced in the previous step)
 1. (Optional) Temporal smoothing
-1. (Optional) Production of 3D reconstruction videos (similar to these###)
+1. (Optional) Production of 3D reconstruction videos 
 1. (Optional) Production of video with 2D landmarks estimated by 3DI
 
 The first four steps are visualized below; the blue text indicates the extension of the corresponding files
 
-<img src="process_video1.png"  alt="Drawing" style="width: 800px;"/>
+<img src="./docs/process_video1.png"  alt="Drawing" style="width: 800px;"/>
 
 The 2D landmarks estimated by 3DI are also produced optionally based on the files produced above.
 
