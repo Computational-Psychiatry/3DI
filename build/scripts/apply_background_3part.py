@@ -99,8 +99,7 @@ for i in range(img.shape[0]):
 #     return I
 
 
-# bgim = cv2.imread('/home/v/Downloads/hand-painted-watercolor-pastel-sky-background/5183000.jpg')
-bgim = cv2.imread('/home/v/code/3DI/build/scripts/bg_combined3.jpg')
+bgim = cv2.imread('./scripts/bg_combined3.jpg')
 bgim = cv2.resize(bgim, (1920, 1080))
 
 # bgim[:,:,:] = 255   
