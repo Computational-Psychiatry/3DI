@@ -119,7 +119,7 @@ The first four steps are visualized below; the blue text indicates the extension
 
 The 2D landmarks estimated by 3DI are also produced optionally based on the files produced above.
 
-<img src="process_video3.png"  alt="Drawing" style="width: 400px;"/>
+<img src="./docs/process_video3.png"  alt="Drawing" style="width: 400px;"/>
 
 
 # Output formats
