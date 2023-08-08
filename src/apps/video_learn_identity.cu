@@ -85,12 +85,11 @@ int main(int argc, char** argv)
         return -1;
     }
 
-    config::OPTS_DELTA_EPS = 0.4f;
-
     std::string video_path(argv[1]);
     std::string landmarks_path(argv[2]);
     std::string config_filepath(argv[3]);
     config::set_params_from_YAML_file(config_filepath);
+    config::OPTS_DELTA_EPS = 0.4f;
 
     if (argc < 3) {
         std::cout << "we need at least 2 arguments (the 2nd needs to be output dir)" << std::endl;
