@@ -21,7 +21,7 @@ pose = np.loadtxt(ppath)
 morphable_model='BFMmm-19830'
 
 if len(sys.argv) > 3:
-    morphable_model = sys.argv[3]
+    morphable_model = sys.argv[3] # BFMmm-19830
     
 # e1 = np.loadtxt(bpath+'.expressions')
 # p1 = np.loadtxt(ppath)[:,6:7]

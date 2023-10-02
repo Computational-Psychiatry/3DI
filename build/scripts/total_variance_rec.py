@@ -14,7 +14,7 @@ import sys
 
 e0path = sys.argv[1]
 epath = sys.argv[2]
-morphable_model='BFMmm-19830'
+morphable_model = 'BFMmm-19830'
 
 if len(sys.argv) > 3:
     morphable_model = sys.argv[3]

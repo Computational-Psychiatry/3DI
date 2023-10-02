@@ -85,7 +85,8 @@ def plot_landmarks(vid_fpath, lmks_path, out_video_path):
     
 def process_single_video(vid_fpath0, landmark_model, out_dir_base, camera_param, 
                          do_undistort, cfgid, produce_3Drec_videos, produce_landmark_video,
-                         write_2D_landmarks, smooth_pose_exp, morphable_model='BFMmm-19830', 
+                         write_2D_landmarks, write_canonical3D_landmarks,
+                         smooth_pose_exp, morphable_model='BFMmm-19830', 
                          use_smoothed_lmks=False):
     
     out_dir_pre = out_dir_base + '/preprocessing/' 
@@ -106,6 +107,9 @@ def process_single_video(vid_fpath0, landmark_model, out_dir_base, camera_param,
         Nsteps += 1
 
     if produce_landmark_video:
+        Nsteps += 1
+        
+    if write_canonical3D_landmarks:
         Nsteps += 1
 
     if do_undistort:
@@ -220,7 +224,8 @@ def process_single_video(vid_fpath0, landmark_model, out_dir_base, camera_param,
     render3d3_path = '%s/%s_3D_pose-exp.mp4' % (out_dir, bbn)
     lmks_video_path = '%s/%s_lmks.mp4' % (out_dir, bbn)
     
-    lmks_path = '%s/%s.2Dlandmarks' % (out_dir, bbn)
+    lmks_path = '%s/%s.2Dlmks' % (out_dir, bbn)
+    canonical_lmks_path = '%s/%s.canonical_lmks' % (out_dir, bbn)
     
     if not os.path.exists(exp_path) or not os.path.exists(pose_path) or not os.path.exists(illum_path):
         cmd_video = './video_from_saved_identity %s %s %s %s %s %s %s %s %s' % (vid_fpath, landmarks_fpath, cfg_fpath, camera_param,
@@ -245,7 +250,7 @@ def process_single_video(vid_fpath0, landmark_model, out_dir_base, camera_param,
 
         
     if smooth_pose_exp and not os.path.exists(poses_path):
-        cmd_smooth = 'python ./scripts/total_variance_rec_pose.py %s %s' % (pose_path, poses_path)
+        cmd_smooth = 'python ./scripts/total_variance_rec_pose.py %s %s %s' % (pose_path, poses_path, morphable_model)
         print(cmd_smooth)
         os.system(cmd_smooth)
         print('\t > Took %.2f secs' % (time()-t0))
@@ -300,6 +305,15 @@ def process_single_video(vid_fpath0, landmark_model, out_dir_base, camera_param,
                                                                     exps_path, poses_path, lmks_path)
         print(cmd_lmks)
         os.system(cmd_lmks)
+        
+    if smooth_pose_exp and write_canonical3D_landmarks and not os.path.exists(canonical_lmks_path):
+        cmd_canonical_lmks = 'python ./scripts/produce_canonicalized_3Dlandmarks.py %s %s %s' % (exps_path, 
+                                                                                            canonical_lmks_path,
+                                                                                            morphable_model)
+        print('\n\nStep 8/%d: Producing canonicalized landmarks' % Nsteps)
+        print('===================================')
+
+        os.system(cmd_canonical_lmks)
 
     if produce_landmark_video and not os.path.exists(lmks_path):
         plot_landmarks(vid_fpath, lmks_path, lmks_video_path)
@@ -358,6 +372,8 @@ if __name__ == "__main__":
                         Takes some time to produce.""")
     parser.add_argument('--write_2D_landmarks', default=True, type=str2bool,
                         help="""Write 2D landmarks produced by 3DI. Requires the smooth_pose_exp parameter to be True.""")
+    parser.add_argument('--write_canonical3D_landmarks', default=True, type=str2bool,
+                        help="""Write canonicalized 3D landmarks produced by 3DI. Requires the smooth_pose_exp parameter to be True.""")
     parser.add_argument('--produce_landmark_video', default=True, type=str2bool, 
                         help="""Produce video with detected landmarks. Takes some time to produce.""")
 
@@ -366,6 +382,7 @@ if __name__ == "__main__":
     process_single_video(args.video_path, args.landmark_model, args.out_dir, args.camera_param, args.undistort, 
                          cfgid=args.cfgid, 
                          write_2D_landmarks=args.write_2D_landmarks,
+                         write_canonical3D_landmarks=args.write_canonical3D_landmarks,
                          produce_3Drec_videos=args.produce_3Drec_videos,
                          produce_landmark_video=args.produce_landmark_video,
                          smooth_pose_exp=args.smooth_pose_exp)
