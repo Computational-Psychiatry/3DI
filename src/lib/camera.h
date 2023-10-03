@@ -290,7 +290,7 @@ struct Camera
                 continue;
             remap(view, rview, map1, map2, cv::INTER_LINEAR);
             imshow("Image View", rview);
-            cv::waitKey(0);
+            cv::waitKey(60);
         }
     }
 
