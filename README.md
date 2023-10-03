@@ -11,7 +11,7 @@ Repository of the 3DI method for 3D face reconstruction via 3DMM fitting. The im
 1. [Running the code](#running-the-code)
 1. [Output format](#output-formats)
 1. [Advanced features](#advanced-features)
-	1. Camera Calibration (#camera-calibration)
+	1. [Camera Calibration](#camera-calibration)
 
 ***
 
