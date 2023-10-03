@@ -10,6 +10,8 @@ Repository of the 3DI method for 3D face reconstruction via 3DMM fitting. The im
 1. [Installation](#installation)
 1. [Running the code](#running-the-code)
 1. [Output format](#output-formats)
+1. [Advanced features](#advanced-features)
+	1. [Camera Calibration](#camera-calibration)
 
 ***
 
@@ -128,7 +130,8 @@ The 2D landmarks estimated by 3DI are also produced optionally based on the file
 Below are the extensions some of the output files provided by 3DI video analysis software:
 * `.expressions_smooth`: A text file that contains all the expression coefficients of the video. That is, the file contains a `Tx79` matrix, where the `t`th row contains the 79 expression coefficients of the expression (PCA) model
 * `.poses_smooth`: A text file that contains all the poses coefficients of the video. The file contains a `Tx9` matrix, where the **first 3 columns** contain the the 3D translation `(tx, ty, tz)` for all the `T` frames of the video and the **last 3 columns** of the matrix contain the rotation (`yaw, pitch, roll`) for all the `T` frames. 
-* `.2Dlandmarks`: A text file with the 51 landmarks corresponding to the inner face (see below), as predicted by 3DI. The file contains a matrix of size `Tx102`, where each row is of the format: `x0 y0 x1 y1 ... x51 y51`.
+* `.2Dlmks`: A text file with the 51 landmarks corresponding to the inner face (see below), as predicted by 3DI. The file contains a matrix of size `Tx102`, where each row is of the format: `x0 y0 x1 y1 ... x51 y50`.
+* `.canonicalized_lmks`: A text file with the 51 landmarks corresponding to the inner face (see below), after removing identity and pose variation. The file contains a matrix of size `Tx153`, where each row is of the format: `x0 y0 z0 x1 y1 z1 ... x50 y50 z50`.
 <img src="./docs/landmarks.png"  alt="Landmarks" style="width: 450px;"/>
 
 # Computation time
@@ -151,6 +154,57 @@ Note that the main script for videos (`process_video.py`) includes a number of o
     </tbody>
 </table>
 <p style="font-size:85%"><sup>&#8224;</sup>Required step</p>
+
+
+
+# Advanced features
+
+## Camera Calibration
+
+### Creating the calibration data
+The performance of 3DI is expected to improve if one incorporates the matrix of the camera that was used to record the data into the reconstruction process. We provide a calibration procedure, outlined below. (The procedure is for a camera of a MacBook Pro 21, you may replace the strings `macbookpro21` with your camera model wherever applicable.)
+
+1. Print the checkerboard pattern in the following link to an letter- or A4-sized paper: https://github.com/opencv/opencv/blob/4.x/doc/pattern.png
+1. Tape the printed checkerboard pattern to a sturdy surface, like a clipboard. Make sure that the paper is taped tightly and neatly.
+1. Record a video of yourself while holding the chechkerboard pattern at various angles and distances. An example video can be found in the following link:  https://www.youtube.com/watch?v=z0nQGeVJS3s
+	* Make sure that you move slowly to minimize motion blur
+	* Try to keep the checkerboard pattern within the frame at all times
+	* Try to have a video of 2-3 minutes --- not much shorter or longer
+1. Create the directory `build/calibration/videos`:
+	* `mkdir build/calibration/videos`
+1. Copy your video inside the folder `build/calibration/videos`. In the rest of this tutorial, we assume that the video file is at the following location: `build/calibration/videos/macbookpro21.mp4`
+1. Go to the `build` directory: `cd build`
+1. Create directories through the following comments:
+	* `mkdir calibration/videos/frames`
+	* `mkdir calibration/videos/frames/macbookpro21`
+1. Create frames from the video by running the following `ffmpeg` command:
+	* `ffmpeg -i calibration/videos/macbookpro21.mp4 -r 1 calibration/videos/frames/macbookpro21/frame%04d.png`	
+1. Manually inspect the images in the directory `calibration/videos/frames/macbookpro21/`. Remove any images where there is too much motion blur or the checkerboard is not fully in the frame. 
+1. Now we will do the calibration. 
+	* Make sure that the you successfully completed the installation by following the steps in the Installation section
+	* Run the following command from the `build` directory:
+		* `./calibrate_camera "calibration/videos/frames/macbookpro21/frame*.png" "models/cameras/macbookpro21.txt"`
+	* The code above can take a few minutes
+	* The code may need a GUI to run, but this can easily be fixed (you can comment out the `imread`'s within the `camera.h` file that cause the need for GUI and re-compile the code)
+1. The If the code runs successfully, your calibration file must be located at `build/models/cameras/macbookpro21.txt`.
+
+### Using the calibration matrix
+Once you obtained the calibration matrix, it can be incorporated into the reconstruction process by using two additional command line arguments, namely `camera_param` and `undistort`. The former argument be set to the camera calibration file and the latter to `1`, as shown below:
+
+```
+python process_video.py ./output testdata/elaine.mp4 --camera_param=./models/cameras/macbookpro21.txt --undistort=1
+```
+
+(This command is for illustration only, since the `elaine.mp4` video was clearly not recorded with a MacBook Pro.)
+
+
+
+
+
+
+
+
+
 
 
 
