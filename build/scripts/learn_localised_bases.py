@@ -12,14 +12,14 @@ from glob import glob
 import numpy as np
 import matplotlib.pyplot as plt
 
-os.chdir('..')
-
 import cv2
 
 from sklearn.decomposition import DictionaryLearning
-from scipy.signal import medfilt
-sys.path.append(os.getcwd()+'/SyncRef/modules')
-from scipy.ndimage import gaussian_filter1d
+
+expressions_dir = sys.argv[1] # '/media/v/SSD1TB/dataset/videos/treecam/ML/output/BFMmm-19830.cfg7.global4.curt'
+morphable_model = sys.argv[2] # 'BFMmm-19830'
+# expressions_dir =  '/media/v/SSD1TB/dataset/videos/treecam/ML/output/BFMmm-19830.cfg7.global4.curt'
+# morphable_model = 'BFMmm-19830'
 
 def create_expression_sequence(epsilons, E):
     ps = []
@@ -29,7 +29,6 @@ def create_expression_sequence(epsilons, E):
         ps.append(p)
     return np.array(ps)[:,:,0]
 
-#%%
 def save_blank_video(T, videpath):
     # Define video properties
     width = 1080
@@ -51,10 +50,8 @@ def save_blank_video(T, videpath):
     # Display a message when the video is created
     print(f"Blank video saved as {videpath}")
 
-morphable_model='BFMmm-19830'
 
 sdir = f'models/MMs/{morphable_model}/'
-
 
 cfgid = 1
 landmark_model = 'global4'
@@ -65,6 +62,7 @@ tmp_local = 'tmp_local'
 
 if not os.path.exists(tmp_local):
     os.mkdir(tmp_local)
+
 
 T = 60
 save_blank_video(T,  f'{tmp_local}/blank.avi')
@@ -92,17 +90,9 @@ np.savetxt(shp_fpath, shp)
 np.savetxt(tex_fpath, tex0)
 
 
-#%%
+files = glob(f'{expressions_dir}/*.expressions_smooth')
 
-def znorm(x):
-    x = np.array(x)
-    return (x-x.mean())/x.std()
-
-files = glob('/media/v/SSD1TB/dataset/videos/treecam/ML/output/BFMmm-19830.cfg7.global4.curt/*ns_smooth')
-
-for file in files:
-    print(file)
-
+VERSION = '0.0.1.%d' % (len(files)) # version of the localized_basis
 
 li = [17286,17577,17765,17885,18012,18542,18668,18788,18987,19236,7882,7896,7905,7911,6479,7323,
       7922,8523,9362,1586,3480,4770,5807,4266,3236, 10176,11203,12364,14269,12636,11602,5243,5875,
@@ -118,21 +108,13 @@ rel_ids   = {'lb': np.array(list(range(0, 5))),
              'ul': np.array(list(range(31, 37))+list(range(43, 47))),
              'll': np.array(list(range(37, 43))+list(range(47, 51)))}
 
-# num_comps = {'lb': 3,
-#              'rb': 3,
-#              'no': 4,
-#              'le': 3,
-#              're': 3,
-#              'ul': 5,
-#              'll': 5}
-
 num_comps = {'lb': 3+2,
              'rb': 3+2,
              'no': 4+1,
              'le': 3+2,
              're': 3+2,
-             'ul': 5+2,
-             'll': 5+2}
+             'ul': 5+1,
+             'll': 5+2+1}
 
 facial_feats = list(num_comps.keys())
 
@@ -160,9 +142,6 @@ for feat in facial_feats:
     X = np.concatenate(xs, )
     dX = np.concatenate(dxs, )
     
-    # X = X-np.mean(X,axis=0)
-    # dX = dX-np.mean(dX,axis=0)
-    
     if not basis_set['use_abs']:
         X = dX
         
@@ -180,7 +159,8 @@ for feat in facial_feats:
     X_transformed = basis.transform(X) #
     
     X_rec = X_transformed @ W
-        
+    
+    """    
     plt.figure(figsize=(2*10,2*2))
     
     # plt.plot()
@@ -194,6 +174,7 @@ for feat in facial_feats:
     plt.plot(np.diff(X_rec[:500,2]),':')
     plt.axis('off')
     plt.show()
+    """
     
     es.append(np.mean(basis.error_))
     # es_rec.append(np.linalg.norm(dX_rec-dX, 'fro'))
@@ -201,6 +182,20 @@ for feat in facial_feats:
     basis_set[feat] = basis
     basis_set['%s_min' % feat] = np.percentile(X_transformed, 0.1, axis=0)
     basis_set['%s_max' % feat] = np.percentile(X_transformed, 99.9, axis=0)
+    
+
+bdir = '%s/E/localized_basis' % sdir
+if not os.path.exists(bdir):
+    os.mkdir(bdir)
+
+isd = ''
+
+if basis_set['use_abs']:
+    isd = 'd'
+
+target_fpath = '%s/v.%s%s.npy' % (bdir, VERSION, isd)
+
+np.save(target_fpath, basis_set)
 
 #%%
 
@@ -209,55 +204,11 @@ EY  = np.loadtxt('%s/E/EY_79.dat' % sdir)[li,:]
 EZ  = np.loadtxt('%s/E/EZ_79.dat' % sdir)[li,:]
 
 Efull = np.concatenate((EX, EY, EZ), axis=0)
-"""
-e = np.loadtxt(files[0])
-T = e.shape[0]
-
-if not basis_set['use_abs']:
-    T -= 1
-    
-
-coeffs = []
-for feat in facial_feats:
-    lvar = np.zeros((T, 51*3))
-    
-    rel_id = rel_ids[feat]
-    K = num_comps[feat]
-    
-    EX  = np.loadtxt('%s/E/EX_79.dat' % sdir)[li[rel_id],:]
-    EY  = np.loadtxt('%s/E/EY_79.dat' % sdir)[li[rel_id],:]
-    EZ  = np.loadtxt('%s/E/EZ_79.dat' % sdir)[li[rel_id],:]
-    E = np.concatenate((EX, EY, EZ), axis=0)
-    
-    # landmarks corresponding to feature
-    x = create_expression_sequence(e, E)
-    # x = x-np.mean(x, axis=0)
-    
-    if not basis_set['use_abs']:
-        x = np.diff(x, axis=0)
-    
-    print(x.shape)
-    
-    lvar[:,rel_id] = x[:,0:int(x.shape[1]/3)]
-    lvar[:,51+rel_id] = x[:,int(x.shape[1]/3):int(x.shape[1]/3)*2]
-    lvar[:,51*2+rel_id] = x[:,int(x.shape[1]/3)*2:]
-    
-    coeffs.append(basis_set[feat].transform(x))
-    
-    z = np.linalg.lstsq(Efull, lvar.T)
-    
-#%%
-"""
 
 bix = 0
 p0 = np.loadtxt('/home/v/code/3DI/build/models/MMs/BFMmm-19830/p0L_mat.dat')
 for feat in facial_feats:
     rel_id = rel_ids[feat]
-    
-    # EX  = np.loadtxt('%s/E/EX_79.dat' % sdir)[li[rel_id],:]
-    # EY  = np.loadtxt('%s/E/EY_79.dat' % sdir)[li[rel_id],:]
-    # EZ  = np.loadtxt('%s/E/EZ_79.dat' % sdir)[li[rel_id],:]
-    # E = np.concatenate((EX, EY, EZ), axis=0)
     
     for k in range(0, basis_set['num_comps'][feat]):
         zs = np.zeros((T, Efull.shape[1]))
@@ -281,23 +232,13 @@ for feat in facial_feats:
             z = np.linalg.lstsq(Efull, lvar.T)[0]
             # z = np.linalg.lstsq(E, x.T)[0]
             zs[t,:] = z.reshape(-1,)
-        
-            # dp = Efull @ z
-            # # dp = dp[:,t]
-            # dp = dp.reshape(3,-1).T
-            # plt.plot(p0[:,0], -p0[:,1], 'o')
             
-            # p = p0+dp
-            # plt.plot(p[:,0], -p[:,1], 'o')
-            # plt.show()
-            # plt.xlim((-60,60))
-            # plt.ylim((-60,60))
-        
         exp_fpath = f'{tmp_local}/blank{bix}.expressions'
         np.savetxt(exp_fpath, zs)
         
         meshvid_fpath = f'{tmp_local}/basis{bix}_mesh.avi'
         texvid_fpath = f'{tmp_local}/basis{bix}.avi'
+        texvid_fpath_mp4_tmp = f'{tmp_local}/basis{bix}_tmp.mp4'
         texvid_fpath_mp4 = f'{tmp_local}/basis{bix}.mp4'
         bix += 1
         
@@ -310,12 +251,15 @@ for feat in facial_feats:
         os.system(cmd_vis)
         os.system(f'rm {meshvid_fpath}')
         
-        ffmpeg_cmd = f'ffmpeg -i {texvid_fpath} -filter:v "crop=436:436:337:850" {texvid_fpath_mp4}'
+        
+        btext = '%s-%d' % (feat.upper(), k+1) 
+        ffmpeg_cmd_tmp = f'ffmpeg -i {texvid_fpath} -filter:v "crop=436:436:337:850" {texvid_fpath_mp4_tmp}'
+        os.system(ffmpeg_cmd_tmp)
+        ffmpeg_cmd = f"ffmpeg -y -i {texvid_fpath_mp4_tmp} -vf \"drawtext=text=\'{btext}\':fontcolor=black:fontsize=48:x=10:y=h-th-10,drawtext=text=\'{bix}\':fontcolor=black:fontsize=48:x=10:y=h-th-60\" {texvid_fpath_mp4}"
         os.system(ffmpeg_cmd)
         os.system(f'rm {texvid_fpath}')
-        # break
-    # break
-#%%
+        os.system(f'rm {texvid_fpath_mp4_tmp}')
+        
 
 ncols = int(np.ceil(np.sqrt((1920./1080.))*np.sqrt(bix)))
 nrows = int(np.ceil(float(bix)/ncols))
@@ -326,7 +270,8 @@ s2 = ''
 s3 = ''
 b = ''
 vlist = ''
-width = int(1920.0/ncols)
+# width = int(1920.0/ncols)
+width = int(3840.0/ncols)
 
 if width % 2 == 1:
     width += 1
@@ -336,11 +281,11 @@ for i in range(int(nrows)):
     for j in range(int(ncols)):
         this_row += 1
         s1 += f'[{vix}:v]scale={width}:{width}[{vix}v];'
-        vix += 1
         if vix < bix:
             vlist += f'-i ./tmp_local/basis{vix}.mp4 '
         elif vix >= bix:
             vlist += '-i ./tmp_local/blank.avi '
+        vix += 1
 
 vix = 0
 for i in range(int(nrows)):
@@ -350,12 +295,12 @@ for i in range(int(nrows)):
         s2 += f'[{vix}v]'
         vix += 1
     
-    s2 += f'hstack={ncols},scale=1920:{width}[v0{i+1}];'
+    s2 += f'hstack={ncols},scale=3840:{width}[v0{i+1}];'
     b += f'[v0{i}]'
     s3 += f'[v0{i+1}]'
 
 s3 += f'vstack={nrows}'
-    
+
 s = s1+s2+s3
 
 ffmpeg_cmd = f'ffmpeg -y {vlist} -filter_complex "{s}" -c:v libx264 -crf 18 output_collage_x.mp4'
@@ -363,11 +308,10 @@ ffmpeg_cmd = f'ffmpeg -y {vlist} -filter_complex "{s}" -c:v libx264 -crf 18 outp
 print(ffmpeg_cmd)
 os.system(ffmpeg_cmd)
 
-ffmpeg_cmd = 'ffmpeg -y -i output_collage_x.mp4 -vf "scale=1920:1080" -c:a copy output_collage.mp4'
+ffmpeg_cmd = 'ffmpeg -y -i output_collage_x.mp4 -vf "scale=3840:2160" -c:a copy output_collage.mp4'
 print(ffmpeg_cmd)
 os.system(ffmpeg_cmd)
 
-#%%
 b += f'vstack=inputs={nrows}[v]'
     
 ffmpeg_cmd = f'ffmpeg -y {vlist} -filter_complex "{s}{b}" -map "[v]" grid.mp4'

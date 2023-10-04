@@ -41,6 +41,9 @@ def save_identity_and_shape(alpha, beta, shp_path, tex_path, morphable_model):
 
 def plot_landmarks(vid_fpath, lmks_path, out_video_path):
     import cv2
+    print(out_video_path)
+    print(out_video_path)
+    print(out_video_path)
     
     points_all = np.loadtxt(lmks_path)
     cap = cv2.VideoCapture(vid_fpath)
@@ -83,11 +86,40 @@ def plot_landmarks(vid_fpath, lmks_path, out_video_path):
     
     
     
-def process_single_video(vid_fpath0, landmark_model, out_dir_base, camera_param, 
-                         do_undistort, cfgid, produce_3Drec_videos, produce_landmark_video,
-                         write_2D_landmarks, write_canonical3D_landmarks,
-                         smooth_pose_exp, morphable_model='BFMmm-19830', 
+# def process_single_video(vid_fpath0, landmark_model, out_dir_base, camera_param, 
+#                          do_undistort, cfgid, produce_3Drec_videos, produce_landmark_video,
+#                          write_2D_landmarks, write_canonical3D_landmarks,
+#                          smooth_pose_exp, 
+#                          local_exp_basis_version,
+#                          compute_local_exp_coeffs,
+#                          morphable_model='BFMmm-19830', 
+#                          use_smoothed_lmks=False):
+    
+def process_single_video(args, 
+                         morphable_model='BFMmm-19830',
                          use_smoothed_lmks=False):
+    vid_fpath0 = args.video_path
+    landmark_model = args.landmark_model
+    out_dir_base = args.out_dir
+    camera_param = args.camera_param
+    do_undistort = args.undistort
+    cfgid = args.cfgid
+    write_2D_landmarks = args.write_2D_landmarks
+    write_canonical3D_landmarks = args.write_canonical3D_landmarks
+    produce_3Drec_videos = args.produce_3Drec_videos
+    produce_landmark_video = args.produce_landmark_video
+    smooth_pose_exp = args.smooth_pose_exp
+    compute_local_exp_coeffs = args.compute_local_exp_coeffs
+    local_exp_basis_version = args.local_exp_basis_version
+    
+    if compute_local_exp_coeffs:
+        write_canonical3D_landmarks = True
+        
+    if write_canonical3D_landmarks:
+        smooth_pose_exp = True
+
+    args = parser.parse_args()
+    
     
     out_dir_pre = out_dir_base + '/preprocessing/' 
     
@@ -111,6 +143,11 @@ def process_single_video(vid_fpath0, landmark_model, out_dir_base, camera_param,
         
     if write_canonical3D_landmarks:
         Nsteps += 1
+        
+    if compute_local_exp_coeffs:
+        Nsteps += 1
+    
+    curstep = 0
 
     if do_undistort:
         bbn0 = '.'.join(os.path.basename(vid_fpath0).split('.')[:-1])
@@ -164,10 +201,11 @@ def process_single_video(vid_fpath0, landmark_model, out_dir_base, camera_param,
     shpsm_fpath = '%s/%s.shp_sm' % (out_dir, vid_bn)
     texsm_fpath = '%s/%s.tex_sm' % (out_dir, vid_bn)
     
+    curstep += 1
     if not os.path.exists(rects_fpath):
         cmd_rects = './video_detect_face %s %s' % (vid_fpath, rects_fpath)
         
-        print('Step 1/%d: Face detection on all frames' % Nsteps)
+        print('Step %d/%d: Face detection on all frames' % (curstep, Nsteps))
         print('======================================')
         # Command #1: Detect face rectangles
         print(cmd_rects)
@@ -175,10 +213,11 @@ def process_single_video(vid_fpath0, landmark_model, out_dir_base, camera_param,
         os.system(cmd_rects)
         print('\t > Took %.2f secs' % (time()-t0))
     
+    curstep += 1
     if not os.path.exists(landmarks_fpath):
         cmd_landmarks = './video_detect_landmarks %s %s %s %s' % (vid_fpath, rects_fpath, landmarks_fpath, cfg_landmark)
         
-        print('\n\nStep 2/%d: Landmark detection on all frames' % Nsteps)
+        print('\n\nStep %d/%d: Landmark detection on all frames' % (curstep, Nsteps))
         print('===========================================')
         # Command #2: Detect landmarks per face rectangle
         print(cmd_landmarks)
@@ -186,10 +225,11 @@ def process_single_video(vid_fpath0, landmark_model, out_dir_base, camera_param,
         os.system(cmd_landmarks)
         print('\t > Took %.2f secs' % (time()-t0))
     
+    curstep += 1
     if not os.path.exists(shp_cfpath) or not os.path.exists(tex_cfpath):
         cmd_identity = './video_learn_identity %s %s %s %s %s %s' % (vid_fpath, landmarks_fpath, cfg_landmark, 
                                                                               camera_param, shp_cfpath, tex_cfpath)
-        print('\n\nStep 3/%d: Learning subject identity' % Nsteps)
+        print('\n\nStep %d/%d: Learning subject identity' % (curstep, Nsteps))
         print('===================================')
         # Command #3: Learn identity
         
@@ -226,11 +266,13 @@ def process_single_video(vid_fpath0, landmark_model, out_dir_base, camera_param,
     
     lmks_path = '%s/%s.2Dlmks' % (out_dir, bbn)
     canonical_lmks_path = '%s/%s.canonical_lmks' % (out_dir, bbn)
+    local_exp_coeffs_path = '%s/%s.local_exp_coeffs.v%s' % (out_dir, bbn, local_exp_basis_version)
     
+    curstep += 1
     if not os.path.exists(exp_path) or not os.path.exists(pose_path) or not os.path.exists(illum_path):
         cmd_video = './video_from_saved_identity %s %s %s %s %s %s %s %s %s' % (vid_fpath, landmarks_fpath, cfg_fpath, camera_param,
                                                                                 shp_fpath, tex_fpath, exp_path, pose_path, illum_path)
-        print('\n\nStep 4/%d: Performing 3D reconstruction on the entire video' % Nsteps)
+        print('\n\nStep %d/%d: Performing 3D reconstruction on the entire video' % curstep, Nsteps)
         print('==========================================================')
         # Command #4: Compute pose and expression coefficients
         print(cmd_video)
@@ -238,12 +280,11 @@ def process_single_video(vid_fpath0, landmark_model, out_dir_base, camera_param,
         os.system(cmd_video)
         print('\t > Took %.2f secs' % (time()-t0))
 
-        
-    
     t0 = time()
+    curstep += 1
     if smooth_pose_exp and not os.path.exists(exps_path):
         cmd_smooth = 'python ./scripts/total_variance_rec.py %s %s %s' % (exp_path, exps_path, morphable_model)
-        print('\n\nStep 5/%d: Smoothing expression and pose coefficients over time' % Nsteps)
+        print('\n\nStep %d/%d: Smoothing expression and pose coefficients over time' % curstep, Nsteps)
         print('=========================================================================================')
         print(cmd_smooth)
         os.system(cmd_smooth)
@@ -269,13 +310,14 @@ def process_single_video(vid_fpath0, landmark_model, out_dir_base, camera_param,
     """
 
     t0 = time()
-    if produce_3Drec_videos and not os.path.exists(render3ds_path): # or not os.path.exists(texturefs_path):
+    curstep += 1
+    if produce_3Drec_videos and not os.path.exists(render3ds_path): # or not os.path.exists(texturefs_path):    
         cmd_vis = './visualize_3Doutput %s %s %s %s %s %s %s %s %s %s' % (vid_fpath, cfg_fpath, camera_param, shpsm_fpath, tex_fpath,
                                                                            exps_path, poses_path, illum_path, render3ds_path, texturefs_path)
         rm_texture = 'rm %s' % texturefs_path
 
         # Command #5: visualize output
-        print('\n\nStep 6/%d: Producing reconstructed face videos' % Nsteps)
+        print('\n\nStep %d/%d: Producing reconstructed face videos' % (curstep, Nsteps))
         print('=============================================')
         print(cmd_vis)
         os.system(cmd_vis)
@@ -298,24 +340,39 @@ def process_single_video(vid_fpath0, landmark_model, out_dir_base, camera_param,
 
 
     t0 = time()
-    if smooth_pose_exp and write_2D_landmarks:
-        print('\n\nStep 7/%d: Producing landmarks video' % Nsteps)
+    curstep += 1
+    if write_2D_landmarks and not os.path.exists(lmks_path):
+        print('\n\nStep %d/%d: Producing landmarks video' % (curstep, Nsteps))
         print('===================================')
         cmd_lmks = './write_2Dlandmarks_3DI %s %s %s %s %s %s %s' % (vid_fpath, cfg_fpath, camera_param, shp_fpath, 
                                                                     exps_path, poses_path, lmks_path)
         print(cmd_lmks)
         os.system(cmd_lmks)
         
-    if smooth_pose_exp and write_canonical3D_landmarks and not os.path.exists(canonical_lmks_path):
+    curstep += 1
+    if write_canonical3D_landmarks and not os.path.exists(canonical_lmks_path):
+        
         cmd_canonical_lmks = 'python ./scripts/produce_canonicalized_3Dlandmarks.py %s %s %s' % (exps_path, 
                                                                                             canonical_lmks_path,
                                                                                             morphable_model)
-        print('\n\nStep 8/%d: Producing canonicalized landmarks' % Nsteps)
+        print('\n\nStep %d/%d: Producing canonicalized landmarks' % (curstep, Nsteps))
         print('===================================')
 
         os.system(cmd_canonical_lmks)
+    
+    curstep += 1
+    if compute_local_exp_coeffs and not os.path.exists(local_exp_coeffs_path):
+        
+        cmd_local_exp = 'python ./scripts/compute_local_exp_coefficients.py %s %s %s %s' % (canonical_lmks_path, 
+                                                                                            local_exp_coeffs_path,
+                                                                                            morphable_model,
+                                                                                            local_exp_basis_version)
+        print('\n\nStep %d/%d: Computing local expression coefficients' % (curstep, Nsteps))
 
-    if produce_landmark_video and not os.path.exists(lmks_path):
+        print(cmd_local_exp)
+        os.system(cmd_local_exp)
+    
+    if produce_landmark_video and not os.path.exists(lmks_video_path):
         plot_landmarks(vid_fpath, lmks_path, lmks_video_path)
         print('\t > Took %.2f secs' % (time()-t0))
         
@@ -372,18 +429,19 @@ if __name__ == "__main__":
                         Takes some time to produce.""")
     parser.add_argument('--write_2D_landmarks', default=True, type=str2bool,
                         help="""Write 2D landmarks produced by 3DI. Requires the smooth_pose_exp parameter to be True.""")
-    parser.add_argument('--write_canonical3D_landmarks', default=True, type=str2bool,
+    parser.add_argument('--write_canonical3D_landmarks', default=False, type=str2bool,
                         help="""Write canonicalized 3D landmarks produced by 3DI. Requires the smooth_pose_exp parameter to be True.""")
     parser.add_argument('--produce_landmark_video', default=True, type=str2bool, 
-                        help="""Produce video with detected landmarks. Takes some time to produce.""")
+                        help="""Produce video with detected landmarks. Takes some times to produce.""")
+    parser.add_argument('--compute_local_exp_coeffs', default=False, type=str2bool, 
+                        help="""Compute local basis expression coefficients. This option will need an expression basis
+                        (see argument --local_exp_basis_version) and the default argument will be used if not provided. 
+                        Also, the --write_canonical3D_landmarks needs to be and will be set to True.""")
+    parser.add_argument('--local_exp_basis_version', default='0.0.1.4', type=str, 
+                        help="""Version of local expression basis.""")
+    
 
     args = parser.parse_args()
     
-    process_single_video(args.video_path, args.landmark_model, args.out_dir, args.camera_param, args.undistort, 
-                         cfgid=args.cfgid, 
-                         write_2D_landmarks=args.write_2D_landmarks,
-                         write_canonical3D_landmarks=args.write_canonical3D_landmarks,
-                         produce_3Drec_videos=args.produce_3Drec_videos,
-                         produce_landmark_video=args.produce_landmark_video,
-                         smooth_pose_exp=args.smooth_pose_exp)
+    process_single_video(args)
 
