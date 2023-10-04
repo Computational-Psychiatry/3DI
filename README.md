@@ -134,6 +134,16 @@ Below are the extensions some of the output files provided by 3DI video analysis
 * `.canonicalized_lmks`: A text file with the 51 landmarks corresponding to the inner face (see below), after removing identity and pose variation. The file contains a matrix of size `Tx153`, where each row is of the format: `x0 y0 z0 x1 y1 z1 ... x50 y50 z50`.
 <img src="./docs/landmarks.png"  alt="Landmarks" style="width: 450px;"/>
 
+The following are the relative IDs of the landmarks corresponding to each facial feature:
+```
+{'lb': [0, 1, 2, 3, 4], # left brow
+ 'rb': [5, 6, 7, 8, 9], # right brow
+ 'no': [10, 11, 12, 13, 14, 15, 16, 17, 18], # nose
+ 'le': [19, 20, 21, 22, 23, 24], # left eye
+ 're': [25, 26, 27, 28, 29, 30], # right eye
+ 'ul': [31, 32, 33, 34, 35, 36, 43, 44, 45, 46], # upper lip
+ 'll': [37, 38, 39, 40, 41, 42, 47, 48, 49, 50]} # lower lip
+```
 # Computation time
 
 The processing of a video has a number of steps (see [Running the code](#running-the-code)), and the table below lists the computation time for each of these. We provide computation time for two different configuration files (see `cfgid` [above](#running-the-code)). The default configuration file (`cfgid=1`) leads to significantly less jitter in the results but to also longer processing times, whereas the second one (`cfgid=2`) works faster but yields more jittery videos. 
