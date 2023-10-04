@@ -98,6 +98,11 @@ The produced files are in the subdirectory created under the `output` directory.
 * The reconstruction can be sped up by passing the parameter `--cfgid=2` to use the 2nd configuration file, which is faster although results will include more jitter
 
 
+If you want to compute local expression basis coefficients (experimental), you can run: 
+```
+python process_video.py ./output testdata/elaine.mp4 --compute_local_exp_coeffs=True
+```
+
 More parameters can be seen by running 
 ```python process_video.py --help```
 
@@ -129,7 +134,8 @@ The 2D landmarks estimated by 3DI are also produced optionally based on the file
 
 Below are the extensions some of the output files provided by 3DI video analysis software:
 * `.expressions_smooth`: A text file that contains all the expression coefficients of the video. That is, the file contains a `Tx79` matrix, where the `t`th row contains the 79 expression coefficients of the expression (PCA) model
-* `.poses_smooth`: A text file that contains all the poses coefficients of the video. The file contains a `Tx9` matrix, where the **first 3 columns** contain the the 3D translation `(tx, ty, tz)` for all the `T` frames of the video and the **last 3 columns** of the matrix contain the rotation (`yaw, pitch, roll`) for all the `T` frames. 
+* `.poses_smooth`: A text file that contains all the poses coefficients of the video. The file contains a `Tx9` matrix, where the **first 3 columns** contain the the 3D translation `(tx, ty, tz)` for all the `T` frames of the video and the **last 3 columns** of the matrix contain the rotation (`yaw, pitch, roll`) for all the `T` frames.
+* `.local_exp_coeffs.*` (requires `--compute_local_exp_coeffs=True`): Localized expression coefficients for the video; a text file that contains `TxK` entries, where `K` is the number of coefficients of the basis that is used to compute the expressions. See [video here](https://youtu.be/gKe8kU0kbN4) for an illustration of to what each coefficient corresponds to (e.g., the 25th coefficient in this text file indicates activation in the 25th basis component in the video).
 * `.2Dlmks`: A text file with the 51 landmarks corresponding to the inner face (see below), as predicted by 3DI. The file contains a matrix of size `Tx102`, where each row is of the format: `x0 y0 x1 y1 ... x51 y50`.
 * `.canonicalized_lmks`: A text file with the 51 landmarks corresponding to the inner face (see below), after removing identity and pose variation. The file contains a matrix of size `Tx153`, where each row is of the format: `x0 y0 z0 x1 y1 z1 ... x50 y50 z50`.
 <img src="./docs/landmarks.png"  alt="Landmarks" style="width: 450px;"/>
