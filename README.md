@@ -164,7 +164,7 @@ Note that the main script for videos (`process_video.py`) includes a number of o
 ### Creating the calibration data
 The performance of 3DI is expected to improve if one incorporates the matrix of the camera that was used to record the data into the reconstruction process. We provide a calibration procedure, outlined below. (The procedure is for a camera of a MacBook Pro 21, you may replace the strings `macbookpro21` with your camera model wherever applicable.)
 
-1. Print the checkerboard pattern in the following link to an letter- or A4-sized paper: https://github.com/opencv/opencv/blob/4.x/doc/pattern.png
+1. Print the checkerboard pattern in the following link to an letter- or A4-sized paper: https://github.com/opencv/opencv/blob/4.x/doc/pattern.png (the pattern is also in this repository at `./build/models/cameras/pattern.png`)
 1. Tape the printed checkerboard pattern to a sturdy surface, like a clipboard. Make sure that the paper is taped tightly and neatly.
 1. Record a video of yourself while holding the chechkerboard pattern at various angles and distances. An example video can be found in the following link:  https://www.youtube.com/watch?v=z0nQGeVJS3s
 	* Make sure that you move slowly to minimize motion blur
