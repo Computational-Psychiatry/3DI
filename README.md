@@ -202,7 +202,7 @@ The performance of 3DI is expected to improve if one incorporates the matrix of 
 		* `./calibrate_camera "calibration/videos/frames/macbookpro21/frame*.png" "models/cameras/macbookpro21.txt"`
 	* The code above can take a few minutes
 	* The code may need a GUI to run, but this can easily be fixed (you can comment out the `imread`'s within the `camera.h` file that cause the need for GUI and re-compile the code)
-1. The If the code runs successfully, your calibration file must be located at `build/models/cameras/macbookpro21.txt`.
+1. If the code runs successfully, your calibration file must be located at `build/models/cameras/macbookpro21.txt`.
 
 ### Using the calibration matrix
 Once you obtained the calibration matrix, it can be incorporated into the reconstruction process by using two additional command line arguments, namely `camera_param` and `undistort`. The former argument be set to the camera calibration file and the latter to `1`, as shown below:
