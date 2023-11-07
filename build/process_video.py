@@ -116,10 +116,11 @@ def process_single_video(args,
     if write_canonical3D_landmarks:
         smooth_pose_exp = True
 
-    args = parser.parse_args()
+    # args = parser.parse_args()
     
     
     out_dir_pre = out_dir_base + '/preprocessing/' 
+    os.makedirs(out_dir_pre, exist_ok=True)
     
     Nsteps = 4
 
