@@ -11,6 +11,8 @@
 #include <deque>
 #include <numeric>
 
+using std::string;
+using cv::Mat;
 cv::Point2f transform_pt(float px, float py, const cv::Point2f* center,
                        float* scale, float* resolution, bool invert)
 {
@@ -57,10 +59,10 @@ void paint_innermouth_black(cv::Mat& frame, const std::vector<float>& xp_vec, co
     }
 
     for (uint i=0; i<8; ++i)
-        line( blankim, imouth_pts[i],  imouth_pts[(i+1)%8], Scalar( 255 ), 3 );
+        cv::line( blankim, imouth_pts[i],  imouth_pts[(i+1)%8], cv::Scalar( 255 ), 3 );
 
-    vector<vector<Point> > contours;
-    findContours( blankim, contours, RETR_TREE, CHAIN_APPROX_SIMPLE);
+    std::vector<std::vector<cv::Point> > contours;
+    cv::findContours( blankim, contours, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
 
     float minx = *std::min_element(xp_vec.begin()+31, xp_vec.end());
     float maxx = *std::max_element(xp_vec.begin()+31, xp_vec.end());
@@ -78,7 +80,7 @@ void paint_innermouth_black(cv::Mat& frame, const std::vector<float>& xp_vec, co
         {
             for( uint j = (uint)minx; j < (uint)maxx; j++ )
             {
-                float rawdist = (float)pointPolygonTest( contours[0], Point2f((float)j, (float)i), true );
+                float rawdist = (float)cv::pointPolygonTest( contours[0], cv::Point2f((float)j, (float)i), true );
 
                 if (rawdist > face_size/config::REF_FACE_SIZE) {
 
@@ -97,7 +99,7 @@ void paint_innermouth_black(cv::Mat& frame, const std::vector<float>& xp_vec, co
 }
 
 
-cv::Rect detect_face_opencv(Net& detection_net, const std::string& framework, cv::Mat &frame, Rect *prev_d, double* face_confidence, bool multiscale_start)
+cv::Rect detect_face_opencv(cv::dnn::Net& detection_net, const std::string& framework, cv::Mat &frame, cv::Rect *prev_d, double* face_confidence, bool multiscale_start)
 {
     cv::Rect d;
 
@@ -127,7 +129,7 @@ cv::Rect detect_face_opencv(Net& detection_net, const std::string& framework, cv
 }
 
 
-void detect_landmarks_opencv(const cv::Rect& d, double face_confidence, Net& landmark_net, Net& leye_net, Net& reye_net, Net& mouth_net, Net& correction_net,
+void detect_landmarks_opencv(const cv::Rect& d, double face_confidence, cv::dnn::Net& landmark_net, cv::dnn::Net& leye_net, cv::dnn::Net& reye_net, cv::dnn::Net& mouth_net, cv::dnn::Net& correction_net,
                              cv::Mat &frame, std::vector<float>& xp_vec, std::vector<float>& yp_vec, float &bbox_size,
                              std::vector<float>& xrange, std::vector<float>& yrange, bool use_local_models, bool plot,
                          vector<vector<double> >* xs, vector<vector<double> >* ys)
@@ -245,7 +247,7 @@ void detect_landmarks_opencv(const cv::Rect& d, double face_confidence, Net& lan
 
 
 
-void detect_landmarks_opencv_single(const cv::Rect& d, double face_confidence, Net& landmark_net, Net& leye_net, Net& reye_net, Net& mouth_net, Net& correction_net,
+void detect_landmarks_opencv_single(const cv::Rect& d, double face_confidence, cv::dnn::Net& landmark_net, cv::dnn::Net& leye_net, cv::dnn::Net& reye_net, cv::dnn::Net& mouth_net, cv::dnn::Net& correction_net,
                              cv::Mat &frame, std::vector<float>& xp_vec, std::vector<float>& yp_vec, float &bbox_size,
                              std::vector<float>& xrange, std::vector<float>& yrange, bool use_local_models, bool plot)
 {
@@ -613,7 +615,7 @@ void heatmaps_to_landmarks(cv::Mat* netOut, cv::Mat* netOut_flipped,
     }
 }
 
-
+using cv::dnn::Net;
 std::pair<std::vector<float>, std::vector<float>> compute_landmarks_wlocal_models(cv::Mat& frame, int face_size, std::vector<float>& xp_vec0, std::vector<float>& yp_vec0, cv::Mat& part,
                                                                                   Net& leye_net, Net& reye_net, Net& mouth_net, double tx_rate, double ty_rate)
 {

@@ -10,7 +10,8 @@
 #include "GLfuncs.h"
 #endif
 
-using namespace cv;
+
+using cv::Mat;
 
 VideoFitter::VideoFitter(Camera &cam0,
                          const ushort Kalpha, const ushort Kbeta, const ushort Kepsilon,
@@ -48,15 +49,16 @@ VideoFitter::VideoFitter(Camera &cam0,
     for (size_t t=0; t<T; ++t)
         cams.push_back(Camera(cam0));
 
-    detection_net.setPreferableBackend(DNN_TARGET_CPU);
-    landmark_net.setPreferableBackend(DNN_BACKEND_CUDA);
-    landmark_net.setPreferableTarget(DNN_TARGET_CUDA);
-    leye_net.setPreferableBackend(DNN_BACKEND_CUDA);
-    leye_net.setPreferableTarget(DNN_TARGET_CUDA);
-    reye_net.setPreferableBackend(DNN_BACKEND_CUDA);
-    reye_net.setPreferableTarget(DNN_TARGET_CUDA);
-    mouth_net.setPreferableBackend(DNN_BACKEND_CUDA);
-    mouth_net.setPreferableTarget(DNN_TARGET_CUDA);
+    
+    detection_net.setPreferableBackend(cv::dnn::DNN_TARGET_CPU);
+    landmark_net.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
+    landmark_net.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
+    leye_net.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
+    leye_net.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
+    reye_net.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
+    reye_net.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
+    mouth_net.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
+    mouth_net.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
 
     // Check python code in the end of this file to see how this kernel is generated
 //    float h_Kernel[7] = {1.19794565e-08, 2.63865077e-04, 1.06450766e-01, 7.86570668e-01, 1.06450766e-01, 2.63865077e-04, 1.19794565e-08};

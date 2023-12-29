@@ -24,23 +24,23 @@
 #include <set>
 #include <vector>
 
-using namespace cv::dnn;
+//using namespace cv::dnn;
 
 using std::set;
 using std::map;
 using std::vector;
-
+using cv::dnn::Net;
 struct VideoOutput
 {
-    map<size_t, vector<vector<float>> > exp_coefs;
-    map<size_t, vector<vector<float>> > poses;
+    std::map<size_t, std::vector<vector<float>> > exp_coefs;
+    std::map<size_t, std::vector<vector<float>> > poses;
 
-    map<size_t, vector<float> > illum_coeffs;
+    std::map<size_t, std::vector<float> > illum_coeffs;
     set<int> abs_frame_ids;
 
-    void add_exp_coeffs(const size_t frame_id, const vector<float> &cur_exp_coefs);
-    void add_pose(const size_t frame_id, const vector<float> &cur_pose);
-    void add_illum(const size_t frame_id, const vector<float> &cur_pose);
+    void add_exp_coeffs(const size_t frame_id, const std::vector<float> &cur_exp_coefs);
+    void add_pose(const size_t frame_id, const std::vector<float> &cur_pose);
+    void add_illum(const size_t frame_id, const std::vector<float> &cur_pose);
 
 
     std::vector<float> compute_avg_exp_coeffs(const size_t frame_id, bool ignore_first=false);

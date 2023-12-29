@@ -131,15 +131,13 @@ int LandmarkData::get_face_size(size_t t)
 
 vector<vector<float> > LandmarkData::detect_faces(const std::string& filepath, const std::string& rects_filepath)
 {
-    using namespace cv::dnn;
-
     const std::string caffeConfigFile = "models/deploy.prototxt";
     const std::string caffeWeightFile = "models/res10_300x300_ssd_iter_140000_fp16.caffemodel";
 
     std::string device = "CPU";
     std::string framework = "caffe";
 
-    Net detection_net = cv::dnn::readNetFromCaffe(caffeConfigFile, caffeWeightFile);
+    cv::dnn::Net detection_net = cv::dnn::readNetFromCaffe(caffeConfigFile, caffeWeightFile);
 
     cv::VideoWriter video_out;
 
@@ -186,8 +184,6 @@ vector<vector<float> > LandmarkData::detect_faces(const std::string& filepath, c
 
 vector<vector<float> > LandmarkData::detect_landmarks(const std::string &video_filepath, const vector<vector<float> > &face_rects, const std::string &landmarks_filepath)
 {
-    using namespace cv::dnn;
-
     vector<vector<float> > all_lmks;
 
     const std::string caffeConfigFile = "models/deploy.prototxt";
@@ -196,28 +192,28 @@ vector<vector<float> > LandmarkData::detect_landmarks(const std::string &video_f
     std::string device = "CPU";
     std::string framework = "caffe";
 
-    Net detection_net = cv::dnn::readNetFromCaffe(caffeConfigFile, caffeWeightFile);
-    // detection_net.setPreferableBackend(DNN_BACKEND_CUDA);
-    // detection_net.setPreferableTarget(DNN_TARGET_CUDA);
+    cv::dnn::Net detection_net = cv::dnn::readNetFromCaffe(caffeConfigFile, caffeWeightFile);
+    // detection_net.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
+    // detection_net.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
 
     std::string tfLandmarkNet("models/landmark_models/model_FAN_frozen.pb");
-    Net landmark_net = cv::dnn::readNetFromTensorflow(tfLandmarkNet);
-    landmark_net.setPreferableBackend(DNN_BACKEND_CUDA);
-    landmark_net.setPreferableTarget(DNN_TARGET_CUDA);
+    cv::dnn::Net landmark_net = cv::dnn::readNetFromTensorflow(tfLandmarkNet);
+    landmark_net.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
+    landmark_net.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
 
-    Net leye_net = cv::dnn::readNetFromTensorflow("models/landmark_models/m-64l64g0-64-128-5121968464leye.pb");
-    leye_net.setPreferableBackend(DNN_BACKEND_CUDA);
-    leye_net.setPreferableTarget(DNN_TARGET_CUDA);
+    cv::dnn::Net leye_net = cv::dnn::readNetFromTensorflow("models/landmark_models/m-64l64g0-64-128-5121968464leye.pb");
+    leye_net.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
+    leye_net.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
 
-    Net reye_net = cv::dnn::readNetFromTensorflow("models/landmark_models/m-64l64g0-64-128-5121968464reye.pb");
-    reye_net.setPreferableBackend(DNN_BACKEND_CUDA);
-    reye_net.setPreferableTarget(DNN_TARGET_CUDA);
+    cv::dnn::Net reye_net = cv::dnn::readNetFromTensorflow("models/landmark_models/m-64l64g0-64-128-5121968464reye.pb");
+    reye_net.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
+    reye_net.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
 
-    Net mouth_net = cv::dnn::readNetFromTensorflow("models/landmark_models/m-64l64g0-64-128-5121968464mouth.pb");
-    mouth_net.setPreferableBackend(DNN_BACKEND_CUDA);
-    mouth_net.setPreferableTarget(DNN_TARGET_CUDA);
+    cv::dnn::Net mouth_net = cv::dnn::readNetFromTensorflow("models/landmark_models/m-64l64g0-64-128-5121968464mouth.pb");
+    mouth_net.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
+    mouth_net.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
 
-    Net correction_net = cv::dnn::readNetFromTensorflow("models/landmark_models/model_correction.pb");
+    cv::dnn::Net correction_net = cv::dnn::readNetFromTensorflow("models/landmark_models/model_correction.pb");
 
     cv::VideoCapture capture(video_filepath);
 

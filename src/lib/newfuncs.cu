@@ -545,7 +545,7 @@ __global__ void convolutionRowsKernel(
         )
 {
     // Handle to thread block group
-    cg::thread_block cta = cg::this_thread_block();
+    cooperative_groups::thread_block cta = cooperative_groups::this_thread_block();
     __shared__ float s_Data[ROWS_BLOCKDIM_Y][(ROWS_RESULT_STEPS + 2 * ROWS_HALO_STEPS) * ROWS_BLOCKDIM_X];
 
     //Offset to the left halo edge
@@ -580,7 +580,7 @@ __global__ void convolutionRowsKernel(
     }
 
     //Compute and store results
-    cg::sync(cta);
+    cooperative_groups::sync(cta);
 #pragma unroll
 
     for (int i = ROWS_HALO_STEPS; i < ROWS_HALO_STEPS + ROWS_RESULT_STEPS; i++)
@@ -640,7 +640,7 @@ __global__ void convolutionColumnsKernel(
         )
 {
     // Handle to thread block group
-    cg::thread_block cta = cg::this_thread_block();
+    cooperative_groups::thread_block cta = cooperative_groups::this_thread_block();
     __shared__ float s_Data[COLUMNS_BLOCKDIM_X][(COLUMNS_RESULT_STEPS + 2 * COLUMNS_HALO_STEPS) * COLUMNS_BLOCKDIM_Y + 1];
 
     //Offset to the upper halo edge
@@ -674,7 +674,7 @@ __global__ void convolutionColumnsKernel(
     }
 
     //Compute and store results
-    cg::sync(cta);
+    cooperative_groups::sync(cta);
 #pragma unroll
 
     for (int i = COLUMNS_HALO_STEPS; i < COLUMNS_HALO_STEPS + COLUMNS_RESULT_STEPS; i++)
