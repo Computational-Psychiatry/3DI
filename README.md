@@ -1,4 +1,4 @@
-## Introduction
+## Introduction for v0.2
 
 <p align="center">
 <img src="./docs/gifs/don.gif" width="320"/> <img src="./docs/gifs/dhilma.gif" width="320"/>
@@ -23,7 +23,7 @@ Repository of the 3DI method for 3D face reconstruction via 3DMM fitting. The im
 
 **Software**
 * CUDA (tested with v12.2)
-* OpenCV (tested with v4.8.1)
+* OpenCV (tested with v4.8.1; must be compiled with CUDA -- see, e.g., [here](https://github.com/Computational-Psychiatry/3DI/wiki/Compiling-OpenCV-with-CUDA-12.x))
 * Python 3
 
 The following python packages are also needed, but these can be installed by following the instructions in Section 2 of Installation below.
