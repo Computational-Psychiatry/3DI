@@ -37,11 +37,11 @@ The following python packages are also needed, but these can be installed by fol
 
 
 ### 1) Compile CUDA code
-Download the code (suggested version is v0.1.0 -- but download v0.2.0-alpha for CUDA 12.x) 
+Download the code by replacing vX.Y.Z below with either v0.1.0 or v0.2.0 (v0.2.0 works with CUDA 12.x as well as CUDA 11.x, but v.0.1.0 works only with CUDA 11.x) 
 ```
-wget https://github.com/Computational-Psychiatry/3DI/archive/refs/tags/v0.1.0.zip
-unzip v0.1.0.zip
-cd 3DI-0.1.0
+wget https://github.com/Computational-Psychiatry/3DI/archive/refs/tags/vX.Y.Z.zip
+unzip vX.Y.Z.zip
+cd 3DI-X.Y.Z
 ```
 and compile the CUDA code as below
 
