@@ -22,8 +22,8 @@ Repository of the 3DI method for 3D face reconstruction via 3DMM fitting. The im
 * Expression Model: Download the expression model (the Exp_Pca.bin) file from [this link](https://github.com/Juyong/3DFace)
 
 **Software**
-* CUDA (tested with v11.0)
-* OpenCV (tested with v4.5)
+* CUDA (tested with v12.2)
+* OpenCV (tested with v4.8.1)
 * Python 3
 
 The following python packages are also needed, but these can be installed by following the instructions in Section 2 of Installation below.
