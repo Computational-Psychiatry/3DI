@@ -71,6 +71,8 @@ Renderer::Renderer(uint T_, ushort _Kalpha, ushort _Kbeta, ushort _Kepsilon,
     HANDLE_ERROR(cudaMalloc((void**)&d_Zmins, sizeof(float)*DIMX*DIMY));
 
 
+    // $$$ return;
+
     /*
     float *d_REX, *d_REY, *d_REZ;
     float *d_RIX, *d_RIY, *d_RIZ;
@@ -222,7 +224,6 @@ Renderer::Renderer(uint T_, ushort _Kalpha, ushort _Kbeta, ushort _Kepsilon,
     vector< vector<float> > IY_vec = read2DVectorFromFile<float>(config::IY_PATH, config::NPTS, config::NID_COEFS);
     vector< vector<float> > IZ_vec = read2DVectorFromFile<float>(config::IZ_PATH, config::NPTS, config::NID_COEFS);
 
-
     vector< vector<float> > TEX_vec;
 
     if (use_texture)
@@ -319,6 +320,8 @@ Renderer::Renderer(uint T_, ushort _Kalpha, ushort _Kbeta, ushort _Kepsilon,
         HANDLE_ERROR(cudaMalloc((void**)&d_RIZ, sizeof(float)*config::Nredundant*Kalpha));
     }
 
+    // $$$$$$$
+    // return;
 
 
 
@@ -433,18 +436,148 @@ Renderer::Renderer(uint T_, ushort _Kalpha, ushort _Kbeta, ushort _Kepsilon,
     //////////////////////////////////////////
     //////////////////////////////////////////
     //////////////////////////////////////////
+
+    initialize_texture_memories();
+
+}
+
+
+__global__ void kernel_print(cudaTextureObject_t tex)
+{
+    int x = threadIdx.x;
+    int y = threadIdx.y;
+    float val = tex2D<float>(tex, x, y);
+    printf("%.5f, ", val);
 }
 
 
 
 
+void Renderer::initialize_texture_memories()
+{
+    cudaDeviceProp prop;
+    cudaGetDeviceProperties(&prop, 0);
+    printf("texturePitchAlignment: %lu\n", prop.texturePitchAlignment);
+//    size_t pitch;
+
+    dim3 threads(4, 4);
+
+    if (use_identity && Kalpha > 0)
+    {
+        memset(&ix_resDesc, 0, sizeof(ix_resDesc));
+        ix_resDesc.resType = cudaResourceTypePitch2D;
+        ix_resDesc.res.pitch2D.devPtr = d_IX_row_major;
+        ix_resDesc.res.pitch2D.width = Kalpha;
+        ix_resDesc.res.pitch2D.height = config::NPTS;
+        ix_resDesc.res.pitch2D.desc = cudaCreateChannelDesc<float>();
+        ix_resDesc.res.pitch2D.pitchInBytes = pitch2;
+
+        memset(&ix_texDesc, 0, sizeof(ix_texDesc));
+        cudaCreateTextureObject(&ix_tex, &ix_resDesc, &ix_texDesc, NULL);
 
 
+        memset(&iy_resDesc, 0, sizeof(iy_resDesc));
+        iy_resDesc.resType = cudaResourceTypePitch2D;
+        iy_resDesc.res.pitch2D.devPtr = d_IY_row_major;
+        iy_resDesc.res.pitch2D.width = Kalpha;
+        iy_resDesc.res.pitch2D.height = config::NPTS;
+        iy_resDesc.res.pitch2D.desc = cudaCreateChannelDesc<float>();
+        iy_resDesc.res.pitch2D.pitchInBytes = pitch2;
+
+        memset(&iy_texDesc, 0, sizeof(iy_texDesc));
+        cudaCreateTextureObject(&iy_tex, &iy_resDesc, &iy_texDesc, NULL);
 
 
+        memset(&iz_resDesc, 0, sizeof(iz_resDesc));
+        iz_resDesc.resType = cudaResourceTypePitch2D;
+        iz_resDesc.res.pitch2D.devPtr = d_IZ_row_major;
+        iz_resDesc.res.pitch2D.width = Kalpha;
+        iz_resDesc.res.pitch2D.height = config::NPTS;
+        iz_resDesc.res.pitch2D.desc = cudaCreateChannelDesc<float>();
+        iz_resDesc.res.pitch2D.pitchInBytes = pitch2;
+
+        memset(&iz_texDesc, 0, sizeof(iz_texDesc));
+        cudaCreateTextureObject(&iz_tex, &iz_resDesc, &iz_texDesc, NULL);
+
+        /*
+        kernel_print<<<1, threads>>>(ix_tex);
+        cudaDeviceSynchronize();
+        std::cout << "=======================" << std::endl;
+        */
+    }
 
 
+    if (use_expression && Kepsilon > 0)
+    {
+        memset(&ex_resDesc, 0, sizeof(ex_resDesc));
+        ex_resDesc.resType = cudaResourceTypePitch2D;
+        ex_resDesc.res.pitch2D.devPtr = d_EX_row_major;
+        ex_resDesc.res.pitch2D.width = Kepsilon;
+        ex_resDesc.res.pitch2D.height = config::NPTS;
+        ex_resDesc.res.pitch2D.desc = cudaCreateChannelDesc<float>();
+        ex_resDesc.res.pitch2D.pitchInBytes = pitch;
 
+        memset(&ex_texDesc, 0, sizeof(ex_texDesc));
+        cudaCreateTextureObject(&ex_tex, &ex_resDesc, &ex_texDesc, NULL);
+
+
+        memset(&ey_resDesc, 0, sizeof(ey_resDesc));
+        ey_resDesc.resType = cudaResourceTypePitch2D;
+        ey_resDesc.res.pitch2D.devPtr = d_EY_row_major;
+        ey_resDesc.res.pitch2D.width = Kepsilon;
+        ey_resDesc.res.pitch2D.height = config::NPTS;
+        ey_resDesc.res.pitch2D.desc = cudaCreateChannelDesc<float>();
+        ey_resDesc.res.pitch2D.pitchInBytes = pitch;
+
+        memset(&ey_texDesc, 0, sizeof(ey_texDesc));
+        cudaCreateTextureObject(&ey_tex, &ey_resDesc, &ey_texDesc, NULL);
+
+
+        memset(&ez_resDesc, 0, sizeof(ez_resDesc));
+        ez_resDesc.resType = cudaResourceTypePitch2D;
+        ez_resDesc.res.pitch2D.devPtr = d_EZ_row_major;
+        ez_resDesc.res.pitch2D.width = Kepsilon;
+        ez_resDesc.res.pitch2D.height = config::NPTS;
+        ez_resDesc.res.pitch2D.desc = cudaCreateChannelDesc<float>();
+        ez_resDesc.res.pitch2D.pitchInBytes = pitch;
+
+        memset(&ez_texDesc, 0, sizeof(ez_texDesc));
+        cudaCreateTextureObject(&ez_tex, &ez_resDesc, &ez_texDesc, NULL);
+
+        /*
+        kernel_print<<<1, threads>>>(ex_tex);
+        cudaDeviceSynchronize();
+        std::cout << "=======================" << std::endl;
+        kernel_print<<<1, threads>>>(ey_tex);
+        cudaDeviceSynchronize();
+        std::cout << "=======================" << std::endl;
+        kernel_print<<<1, threads>>>(ez_tex);
+        cudaDeviceSynchronize();
+        std::cout << "=======================" << std::endl;
+        */
+    }
+
+
+    if (use_texture && Kbeta > 0)
+    {
+        std::cout << "Kbeta  === " << Kbeta<< std::endl;
+        memset(&tex_resDesc, 0, sizeof(tex_resDesc));
+        tex_resDesc.resType = cudaResourceTypePitch2D;
+        tex_resDesc.res.pitch2D.devPtr = d_TEX_row_major;
+        tex_resDesc.res.pitch2D.width = Kbeta;
+        tex_resDesc.res.pitch2D.height = config::NPTS;
+        tex_resDesc.res.pitch2D.desc = cudaCreateChannelDesc<float>();
+        tex_resDesc.res.pitch2D.pitchInBytes = pitch3;
+
+        memset(&tex_texDesc, 0, sizeof(tex_texDesc));
+        cudaCreateTextureObject(&tex_tex, &tex_resDesc, &tex_texDesc, NULL);
+
+        /*
+        kernel_print<<<1, threads>>>(tex_tex);
+        cudaDeviceSynchronize();
+        */
+    }
+}
 
 
 
@@ -503,7 +636,6 @@ void Renderer::set_x0_short_y0_short(uint t, float *xp, float *yp, size_t array_
 void Renderer::render(uint t, Optimizer& o, OptimizationVariables& ov, const float *R, cublasHandle_t& handle,
                       ushort *N_unique_pixels, float *d_cropped_face, float *d_buffer_face, bool visualize, bool reset_texim)
 {
-
     thrust::fill(thrust::device, d_Zmins, d_Zmins+DIMX*DIMY, std::numeric_limits<float>::max()); // or 999999.f if you prefer
     cudaMemset(o.gx_norm, 0, sizeof(float)*Nrender_estimated*6);
 
@@ -565,13 +697,13 @@ void Renderer::render(uint t, Optimizer& o, OptimizationVariables& ov, const flo
     fill_tex_im1<<<(*N_unique_pixels+NTHREADS-1)/NTHREADS, NTHREADS>>>(o.d_ks_unsorted, o.d_tex_torender, d_texIm, *N_unique_pixels);
 
     if (visualize)
-//    if (true)
+    //if (true)
     {
         imshow_opencv(d_texIm, "TIM");
         imshow_opencv(d_cropped_face+t*(DIMX*DIMY), "INPUT");
 
-        cv::waitKey(1);
-        //cv::waitKey(0);
+//        cv::waitKey(1);
+        cv::waitKey(0);
     }
 
     convolutionRowsGPU( d_buffer_face, d_texIm, DIMX, DIMY );

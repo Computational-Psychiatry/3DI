@@ -50,29 +50,14 @@
 #endif
 
 
-using namespace cv;
-using namespace cv::dnn;
-
-using std::vector;
-
-// these exist on the GPU side
-texture<float,2> EX_texture;
-texture<float,2> EY_texture;
-texture<float,2> EZ_texture;
-
-texture<float,2> IX_texture;
-texture<float,2> IY_texture;
-texture<float,2> IZ_texture;
-
-texture<float,2> TEX_texture;
 
 using std::vector;
 
 int create_data_for_multiframe(const std::string& imdir, Renderer &r, const std::string& outdir, const uint subj_id, float fovx, float fovy,
                                vector<vector<float> >& xps, vector<vector<float> >& yps,
                                vector<vector<float> >& xranges, vector<vector<float> >& yranges,
-                               vector<Mat> &selected_frames, vector<std::string>& result_basepaths, const std::vector<int> &angle_idx,
-                               Net &detection_net, Net &landmark_net, Net &leye_net, Net &reye_net, Net &mouth_net, Net &correction_net,
+                               vector<cv::Mat> &selected_frames, vector<std::string>& result_basepaths, const std::vector<int> &angle_idx,
+                               cv::dnn::Net &detection_net, cv::dnn::Net &landmark_net, cv::dnn::Net &leye_net, cv::dnn::Net &reye_net, cv::dnn::Net &mouth_net, cv::dnn::Net &correction_net,
                                bool set_RESIZE_COEF_via_median=true, int combination_id = -1);
 
 
@@ -158,6 +143,7 @@ int main(int argc, char** argv)
     cudaChannelFormatDesc desc2 = cudaCreateChannelDesc<float>();
     cudaChannelFormatDesc desc3 = cudaCreateChannelDesc<float>();
 
+    /*
     // Start with expression bases
     cudaBindTexture2D(0, EX_texture, vf_identity.r.d_EX_row_major, desc, config::K_EPSILON, config::NPTS, vf_identity.r.pitch);
     cudaBindTexture2D(0, EY_texture, vf_identity.r.d_EY_row_major, desc, config::K_EPSILON, config::NPTS, vf_identity.r.pitch);
@@ -176,6 +162,7 @@ int main(int argc, char** argv)
     {
         cudaBindTexture2D(0, TEX_texture, vf_identity.r.d_TEX_row_major, desc3, config::NTEX_COEFS, config::NPTS, vf_identity.r.pitch3);
     }
+    */
 
     ///////////////////////////////////////////
     ///////////////////////////////////////////
@@ -186,6 +173,7 @@ int main(int argc, char** argv)
     write_1d_vector<float>(texCoeffsPath, h_betas);
 
     std::cout << "\tDone" << std::endl;
+    /*
     ///////////////////////////////////////////
     ///////////////////////////////////////////
     if (vf_identity.r.use_identity) {
@@ -201,7 +189,7 @@ int main(int argc, char** argv)
     cudaUnbindTexture(EX_texture);
     cudaUnbindTexture(EY_texture);
     cudaUnbindTexture(EZ_texture);
-
+    */
 
 
 
@@ -212,7 +200,7 @@ int main(int argc, char** argv)
     }
     *****/
 
-    return 1;
+    return 0;
 }
 
 
@@ -221,7 +209,7 @@ int main(int argc, char** argv)
 
 
 
-
+/*
 
 __global__ void render_expression_basis_texture_colmajor_rotated2(
         const float* __restrict__ alphas, const float* __restrict__ betas, const float* __restrict__ gammas,
@@ -251,6 +239,10 @@ __global__ void render_expression_basis_texture_colmajor_rotated2(
     const int tl_i2 = tl_i1 + N_TRIANGLES;
     const int tl_i3 = tl_i2 + N_TRIANGLES;
 
+
+    //if (tl_i1 >= Nunique_pixels || tl_i2 >= Nunique_pixels || tl_i3 >= Nunique_pixels)
+    //    return;
+
     const float tmpx = tex2D(EX_texture,colix,tl[tl_i1])*alphas[rel_index] + tex2D(EX_texture,colix,tl[tl_i2])*betas[rel_index] + tex2D(EX_texture,colix,tl[tl_i3])*gammas[rel_index];
     const float tmpy = tex2D(EY_texture,colix,tl[tl_i1])*alphas[rel_index] + tex2D(EY_texture,colix,tl[tl_i2])*betas[rel_index] + tex2D(EY_texture,colix,tl[tl_i3])*gammas[rel_index];
     const float tmpz = tex2D(EZ_texture,colix,tl[tl_i1])*alphas[rel_index] + tex2D(EZ_texture,colix,tl[tl_i2])*betas[rel_index] + tex2D(EZ_texture,colix,tl[tl_i3])*gammas[rel_index];
@@ -275,10 +267,14 @@ __global__ void render_identity_basis_texture(
 
     //! Important! We fill REX, ... in a ROW-MAJOR order. This way it will be easier to extract a submatrix of REX that ignores the bottom of REX
     const int idx = threadIdx.x + Kalpha*blockIdx.x;
+//    const int idx = colix + Kalpha*rowix;
 
     const int tl_i1 = triangle_idx[rel_index];
     const int tl_i2 = tl_i1 + N_TRIANGLES;
     const int tl_i3 = tl_i2 + N_TRIANGLES;
+
+    //if (tl_i1 >= N1 || tl_i2 >= N1 || tl_i3 >= N1)
+     //   return;
 
     RIX[idx] = tex2D(IX_texture,colix,tl[tl_i1])*alphas[rel_index] + tex2D(IX_texture,colix,tl[tl_i2])*betas[rel_index] + tex2D(IX_texture,colix,tl[tl_i3])*gammas[rel_index];
     RIY[idx] = tex2D(IY_texture,colix,tl[tl_i1])*alphas[rel_index] + tex2D(IY_texture,colix,tl[tl_i2])*betas[rel_index] + tex2D(IY_texture,colix,tl[tl_i3])*gammas[rel_index];
@@ -312,7 +308,7 @@ __global__ void render_texture_basis_texture(
 
 
 
-
+*/
 
 
 std::vector<std::string> glob(const std::string& pattern) {

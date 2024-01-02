@@ -495,6 +495,21 @@ __global__ void render_identity_basis_texture(
 
 
 
+__global__ void render_texture_basis_texture_via_object(
+        const float* __restrict__ alphas, const float* __restrict__ betas, const float* __restrict__ gammas,
+        const uint* __restrict__ indices, const int N1, const ushort* __restrict__ tl,
+        float* __restrict__ RTEX, const ushort* __restrict__ triangle_idx,
+        const ushort Kbeta, const int N_TRIANGLES, cudaTextureObject_t tex_tex);
+
+__global__ void render_identity_basis_texture_via_object(
+        const float* __restrict__ alphas, const float* __restrict__ betas, const float* __restrict__ gammas,
+        const uint* __restrict__ indices, const int N1, const ushort* __restrict__ tl,
+        float* __restrict__ RIX, float* __restrict__ RIY, float* __restrict__ RIZ,
+        const ushort* __restrict__ triangle_idx, const ushort Kalpha, const int N_TRIANGLES,
+        cudaTextureObject_t ix_tex, cudaTextureObject_t iy_tex, cudaTextureObject_t iz_tex);
+
+
+
 __global__ void render_identity_basis_texture_colmajor_rotated(
         const float* __restrict__ alphas, const float* __restrict__ betas, const float* __restrict__ gammas,
         const uint* __restrict__ indices, const int Nunique_pixels, const ushort* __restrict__ tl,
@@ -502,6 +517,13 @@ __global__ void render_identity_basis_texture_colmajor_rotated(
         const ushort* __restrict__ triangle_idx, const float* R__);
 
 
+__global__ void render_expression_basis_texture_colmajor_rotated2_via_object(
+        const float* __restrict__ alphas, const float* __restrict__ betas, const float* __restrict__ gammas,
+        const uint* __restrict__ indices, const int Nunique_pixels, const ushort* __restrict__ tl,
+        float*  __restrict__ REX, float*  __restrict__ REY, float*  __restrict__ REZ,
+        const ushort* __restrict__ triangle_idx, const float* R__,
+        int N_TRIANGLES, uint Nredundant,
+        cudaTextureObject_t ex_tex, cudaTextureObject_t ey_tex, cudaTextureObject_t ez_tex);
 
 
 

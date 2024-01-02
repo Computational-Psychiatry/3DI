@@ -135,11 +135,37 @@ struct Renderer
 
     vector< vector<int> > tl_vector;
 
+
+    /**
+     * The structures below are for the texture objects
+     * @BEGIN
+     **/
+    //! IDENTITY
+    struct cudaResourceDesc ix_resDesc, iy_resDesc, iz_resDesc;
+    struct cudaTextureDesc ix_texDesc, iy_texDesc, iz_texDesc;
+    cudaTextureObject_t ix_tex, iy_tex, iz_tex;
+
+    //! EXPRESSION
+    struct cudaResourceDesc ex_resDesc, ey_resDesc, ez_resDesc;
+    struct cudaTextureDesc ex_texDesc, ey_texDesc, ez_texDesc;
+    cudaTextureObject_t ex_tex, ey_tex, ez_tex;
+
+    //! TEXTURE
+    struct cudaResourceDesc tex_resDesc;
+    struct cudaTextureDesc tex_texDesc;
+    cudaTextureObject_t tex_tex;
+    /**
+     * @END
+     **/
+
+
 	Renderer(uint T_, ushort _Kalpha, ushort _Kbeta, ushort _Kepsilon,
 			bool use_identity_, bool use_texture_, bool use_expression_,
 			float *h_X0 = NULL, float *h_Y0 = NULL, float *h_Z0 = NULL, float *h_tex_mu = NULL);
 
     void set_x0_short_y0_short(uint t, float *xp, float *yp, size_t array_size=NLANDMARKS_51, bool pad=config::PAD_RENDERING);
+
+    void initialize_texture_memories();
 
 	void render(uint t, Optimizer& o,  OptimizationVariables& ov,  const float *R, cublasHandle_t& handle,
             ushort *N_unique_pixels, float *d_cropped_face, float *d_buffer_face,  bool visualize = false, bool reset_texim=true);

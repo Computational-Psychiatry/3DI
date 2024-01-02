@@ -1801,8 +1801,7 @@ bool VideoFitter::generate_texture(int subj_id, int imwidth, const std::string& 
     float *h_yp = (float*)malloc( config::NPTS*sizeof(float) );
 
     std::vector<int> xoffs, yoffs;
-
-    std::default_random_engine generator;
+    std::default_random_engine generator(1907);
     std::uniform_real_distribution<float> distribution(-0.75f,0.75f);
 
     for (size_t fi=0; fi<Nframes; ++fi)
@@ -2581,9 +2580,6 @@ int VideoFitter::fit_video_frames_landmarks_sparse(const std::string& filepath,
     cudaEventSynchronize( stop );
 
     capture.release();
-
-
-
 
     float   elapsedTime;
     cudaEventElapsedTime( &elapsedTime, start, stop );

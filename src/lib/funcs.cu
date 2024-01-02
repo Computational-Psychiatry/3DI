@@ -161,6 +161,129 @@ __global__ void reset_ushort_array(ushort *flag, int N)
 
 
 
+__global__ void render_texture_basis_texture_via_object(
+        const float* __restrict__ alphas, const float* __restrict__ betas, const float* __restrict__ gammas,
+        const uint* __restrict__ indices, const int N1, const ushort* __restrict__ tl,
+        float* __restrict__ RTEX, const ushort* __restrict__ triangle_idx,
+        const ushort Kbeta, const int N_TRIANGLES, cudaTextureObject_t tex_tex)
+{
+    const int rowix = blockIdx.x;
+    const int colix = threadIdx.x;
+
+    const int rel_index = indices[rowix];
+
+    //! Important! We fill REX, ... in a ROW-MAJOR order. This way it will be easier to extract a submatrix of REX that ignores the bottom of REX
+    const int idx = threadIdx.x + Kbeta*blockIdx.x;
+
+    const int tl_i1 = triangle_idx[rel_index];
+    const int tl_i2 = tl_i1 + N_TRIANGLES;
+    const int tl_i3 = tl_i2 + N_TRIANGLES;
+
+    RTEX[idx] = tex2D<float>(tex_tex,colix,tl[tl_i1])*alphas[rel_index] + tex2D<float>(tex_tex,colix,tl[tl_i2])*betas[rel_index] + tex2D<float>(tex_tex,colix,tl[tl_i3])*gammas[rel_index];
+}
+
+
+
+__global__ void render_identity_basis_texture_via_object(
+        const float* __restrict__ alphas, const float* __restrict__ betas, const float* __restrict__ gammas,
+        const uint* __restrict__ indices, const int N1, const ushort* __restrict__ tl,
+        float* __restrict__ RIX, float* __restrict__ RIY, float* __restrict__ RIZ,
+        const ushort* __restrict__ triangle_idx, const ushort Kalpha, const int N_TRIANGLES,
+        cudaTextureObject_t ix_tex, cudaTextureObject_t iy_tex, cudaTextureObject_t iz_tex)
+{
+    const int rowix = blockIdx.x;
+    const int colix = threadIdx.x;
+
+    const int rel_index = indices[rowix];
+
+    //! Important! We fill REX, ... in a ROW-MAJOR order. This way it will be easier to extract a submatrix of REX that ignores the bottom of REX
+    const int idx = threadIdx.x + Kalpha*blockIdx.x;
+
+    const int tl_i1 = triangle_idx[rel_index];
+    const int tl_i2 = tl_i1 + N_TRIANGLES;
+    const int tl_i3 = tl_i2 + N_TRIANGLES;
+
+    RIX[idx] = tex2D<float>(ix_tex,colix,tl[tl_i1])*alphas[rel_index] + tex2D<float>(ix_tex,colix,tl[tl_i2])*betas[rel_index] + tex2D<float>(ix_tex,colix,tl[tl_i3])*gammas[rel_index];
+    RIY[idx] = tex2D<float>(iy_tex,colix,tl[tl_i1])*alphas[rel_index] + tex2D<float>(iy_tex,colix,tl[tl_i2])*betas[rel_index] + tex2D<float>(iy_tex,colix,tl[tl_i3])*gammas[rel_index];
+    RIZ[idx] = tex2D<float>(iz_tex,colix,tl[tl_i1])*alphas[rel_index] + tex2D<float>(iz_tex,colix,tl[tl_i2])*betas[rel_index] + tex2D<float>(iz_tex,colix,tl[tl_i3])*gammas[rel_index];
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+__global__ void render_expression_basis_texture_colmajor_rotated2_via_object(
+        const float* __restrict__ alphas, const float* __restrict__ betas, const float* __restrict__ gammas,
+        const uint* __restrict__ indices, const int Nunique_pixels, const ushort* __restrict__ tl,
+        float*  __restrict__ REX, float*  __restrict__ REY, float*  __restrict__ REZ,
+        const ushort* __restrict__ triangle_idx, const float* R__,
+        int N_TRIANGLES, uint Nredundant,
+        cudaTextureObject_t ex_tex, cudaTextureObject_t ey_tex, cudaTextureObject_t ez_tex)
+{
+    const int rowix = blockIdx.x;
+    const int colix = threadIdx.x;
+    __shared__ float R[9];
+
+    if (colix < 9) {
+        R[colix] = R__[colix];
+    }
+    __syncthreads();
+
+    const float R00 = R[0]; const float R10 = R[1]; const float R20 = R[2];
+    const float R01 = R[3]; const float R11 = R[4]; const float R21 = R[5];
+    const float R02 = R[6]; const float R12 = R[7]; const float R22 = R[8];
+
+    const int rel_index = indices[rowix];
+
+    const int idx = threadIdx.x*Nredundant + blockIdx.x;
+
+    const int tl_i1 = triangle_idx[rel_index];
+    const int tl_i2 = tl_i1 + N_TRIANGLES;
+    const int tl_i3 = tl_i2 + N_TRIANGLES;
+
+
+    //if (tl_i1 >= Nunique_pixels || tl_i2 >= Nunique_pixels || tl_i3 >= Nunique_pixels)
+    //    return;
+
+    /*
+    const float tmpx = tex2D(EX_texture,colix,tl[tl_i1])*alphas[rel_index] + tex2D(EX_texture,colix,tl[tl_i2])*betas[rel_index] + tex2D(EX_texture,colix,tl[tl_i3])*gammas[rel_index];
+    const float tmpy = tex2D(EY_texture,colix,tl[tl_i1])*alphas[rel_index] + tex2D(EY_texture,colix,tl[tl_i2])*betas[rel_index] + tex2D(EY_texture,colix,tl[tl_i3])*gammas[rel_index];
+    const float tmpz = tex2D(EZ_texture,colix,tl[tl_i1])*alphas[rel_index] + tex2D(EZ_texture,colix,tl[tl_i2])*betas[rel_index] + tex2D(EZ_texture,colix,tl[tl_i3])*gammas[rel_index];
+*/
+    const float tmpx = tex2D<float>(ex_tex,colix,tl[tl_i1])*alphas[rel_index] + tex2D<float>(ex_tex,colix,tl[tl_i2])*betas[rel_index] + tex2D<float>(ex_tex,colix,tl[tl_i3])*gammas[rel_index];
+    const float tmpy = tex2D<float>(ey_tex,colix,tl[tl_i1])*alphas[rel_index] + tex2D<float>(ey_tex,colix,tl[tl_i2])*betas[rel_index] + tex2D<float>(ey_tex,colix,tl[tl_i3])*gammas[rel_index];
+    const float tmpz = tex2D<float>(ez_tex,colix,tl[tl_i1])*alphas[rel_index] + tex2D<float>(ez_tex,colix,tl[tl_i2])*betas[rel_index] + tex2D<float>(ez_tex,colix,tl[tl_i3])*gammas[rel_index];
+
+
+    REX[idx] = tmpx*R00 + tmpy*R01 + tmpz*R02;
+    REY[idx] = tmpx*R10 + tmpy*R11 + tmpz*R12;
+    REZ[idx] = tmpx*R20 + tmpy*R21 + tmpz*R22;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 __global__ void fill_krels(
         const uint N_pixels,

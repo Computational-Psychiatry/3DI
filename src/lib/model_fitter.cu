@@ -64,19 +64,41 @@ void get_obj_hessian_and_gradient_multiframe(Renderer& r, Optimizer& o, Logbarri
         cudaEventRecord( start_t, 0 );
 #endif
         if (r.use_expression) {
+            /*
             render_expression_basis_texture_colmajor_rotated2<<<N_unique_pixels, r.Kepsilon>>>(r.d_alphas_redundant, r.d_betas_redundant, r.d_gammas_redundant,  r.d_redundant_idx, N_unique_pixels,
                                                                                                r.d_tl, r.d_REX, r.d_REY, r.d_REZ, r.d_triangle_idx, rc.R,
                                                                                                config::N_TRIANGLES, config::Nredundant);
+        */
+            render_expression_basis_texture_colmajor_rotated2_via_object<<<N_unique_pixels, r.Kepsilon>>>(r.d_alphas_redundant, r.d_betas_redundant, r.d_gammas_redundant,  r.d_redundant_idx, N_unique_pixels,
+                                                                                               r.d_tl, r.d_REX, r.d_REY, r.d_REZ, r.d_triangle_idx, rc.R,
+                                                                                               config::N_TRIANGLES, config::Nredundant,
+                                                                                               r.ex_tex, r.ey_tex, r.ez_tex);
+
+
         }
 
         if (r.use_identity) {
+            /*
             render_identity_basis_texture<<<N_unique_pixels, r.Kalpha>>>(r.d_alphas_redundant, r.d_betas_redundant, r.d_gammas_redundant, r.d_redundant_idx, N_unique_pixels,
                                                                          r.d_tl, r.d_RIX, r.d_RIY, r.d_RIZ, r.d_triangle_idx, r.Kalpha, config::N_TRIANGLES);
+            */
+            render_identity_basis_texture_via_object<<<N_unique_pixels, r.Kalpha>>>(r.d_alphas_redundant, r.d_betas_redundant, r.d_gammas_redundant,
+                                                                                    r.d_redundant_idx, N_unique_pixels,
+                                                                                    r.d_tl, r.d_RIX, r.d_RIY, r.d_RIZ, r.d_triangle_idx,
+                                                                                    r.Kalpha, config::N_TRIANGLES,
+                                                                                    r.ix_tex, r.iy_tex, r.iz_tex);
+
         }
 
         if (r.use_texture) {
+            /*
             render_texture_basis_texture<<<N_unique_pixels, r.Kbeta>>>(r.d_alphas_redundant, r.d_betas_redundant, r.d_gammas_redundant, r.d_redundant_idx, N_unique_pixels,
                                                                        r.d_tl, r.d_RTEX,  r.d_triangle_idx, r.Kbeta, config::N_TRIANGLES);
+                                                                       */
+
+            render_texture_basis_texture_via_object<<<N_unique_pixels, r.Kbeta>>>(r.d_alphas_redundant, r.d_betas_redundant, r.d_gammas_redundant, r.d_redundant_idx, N_unique_pixels,
+                                                                       r.d_tl, r.d_RTEX,  r.d_triangle_idx, r.Kbeta, config::N_TRIANGLES, r.tex_tex);
+
         }
 
 #ifdef MEASURE_TIME
@@ -87,6 +109,7 @@ void get_obj_hessian_and_gradient_multiframe(Renderer& r, Optimizer& o, Logbarri
         printf( "TM_Render_Bases = %.2f ms\n", elapsedTime_t);
 #endif
 
+        //!std::cout << "Updating for time "  <<t  << std::endl;
         dc.compute_hessian_and_gradient(t, o, rc, r, cams[t], N_unique_pixels, handle, li);
 
     }
@@ -166,6 +189,7 @@ bool fit_3DMM_shape_rigid(uint t, Renderer& r, Optimizer& o, Logbarrier_Initiali
             cudaEventCreate( &stop );
             cudaEventRecord( start, 0 );
 #endif
+            //!print_vector(o.dG_dtheta, s.n);
             copyMatsFloatToDouble<<<(s.n*s.n+NTHREADS-1)/NTHREADS, NTHREADS>>>(o.JTJ, o.dG_dtheta, s.JTJ, s.dG_dtheta, s.n);
             bool solve_success = s.solve(handleDn);
 #ifdef MEASURE_TIME
@@ -177,6 +201,7 @@ bool fit_3DMM_shape_rigid(uint t, Renderer& r, Optimizer& o, Logbarrier_Initiali
 #endif
 
             cudaMemcpy(&h_searchdir_0, s.search_dir, sizeof(float), cudaMemcpyDeviceToHost);
+            //!print_vector(s.search_dir, s.n);
 
             if (isnan(h_searchdir_0)) {
                 if (config::PRINT_WARNINGS)

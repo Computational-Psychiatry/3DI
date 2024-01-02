@@ -45,25 +45,11 @@
 
 #ifdef VISUALIZE_3D
 #include "GLfuncs.h"
-
 #endif
 
 
-using namespace cv;
-using namespace cv::dnn;
-
 using std::vector;
 
-// these exist on the GPU side
-texture<float,2> EX_texture;
-texture<float,2> EY_texture;
-texture<float,2> EZ_texture;
-
-texture<float,2> IX_texture;
-texture<float,2> IY_texture;
-texture<float,2> IZ_texture;
-
-texture<float,2> TEX_texture;
 
 int fit_video_frames_landmarks_sparse(Camera &cam0,
                                       const std::string& filepath,
@@ -170,12 +156,6 @@ int main(int argc, char** argv)
     cudaChannelFormatDesc desc2 = cudaCreateChannelDesc<float>();
     cudaChannelFormatDesc desc3 = cudaCreateChannelDesc<float>();
 
-    // Start with expression bases
-    cudaBindTexture2D(0, EX_texture, vf.r.d_EX_row_major, desc, vf.r.Kepsilon, config::NPTS, vf.r.pitch);
-    cudaBindTexture2D(0, EY_texture, vf.r.d_EY_row_major, desc, vf.r.Kepsilon, config::NPTS, vf.r.pitch);
-    cudaBindTexture2D(0, EZ_texture, vf.r.d_EZ_row_major, desc, vf.r.Kepsilon, config::NPTS, vf.r.pitch);
-
-
     float h_lambdas[3] = {-7.3627f, 51.1364f, 100.1784f};
     float h_Lintensity = 0.1;
 
@@ -198,114 +178,11 @@ int main(int argc, char** argv)
 
     vf.output_landmarks(vid_out, filepath, output_landmarks_path, &exp_coefs, &poses);
 
-    cudaUnbindTexture(EX_texture);
-    cudaUnbindTexture(EY_texture);
-    cudaUnbindTexture(EZ_texture);
-
     free(h_X0);
     free(h_Y0);
     free(h_Z0);
     free(h_tex_mu);
 }
-
-
-
-
-
-
-
-
-
-__global__ void render_expression_basis_texture_colmajor_rotated2(
-        const float* __restrict__ alphas, const float* __restrict__ betas, const float* __restrict__ gammas,
-        const uint* __restrict__ indices, const int Nunique_pixels, const ushort* __restrict__ tl,
-        float*  __restrict__ REX, float*  __restrict__ REY, float*  __restrict__ REZ,
-        const ushort* __restrict__ triangle_idx, const float* R__,
-        int N_TRIANGLES, uint Nredundant)
-{
-    const int rowix = blockIdx.x;
-    const int colix = threadIdx.x;
-    __shared__ float R[9];
-
-    if (colix < 9) {
-        R[colix] = R__[colix];
-    }
-    __syncthreads();
-
-    const float R00 = R[0]; const float R10 = R[1]; const float R20 = R[2];
-    const float R01 = R[3]; const float R11 = R[4]; const float R21 = R[5];
-    const float R02 = R[6]; const float R12 = R[7]; const float R22 = R[8];
-
-    const int rel_index = indices[rowix];
-
-    const int idx = threadIdx.x*Nredundant + blockIdx.x;
-
-    const int tl_i1 = triangle_idx[rel_index];
-    const int tl_i2 = tl_i1 + N_TRIANGLES;
-    const int tl_i3 = tl_i2 + N_TRIANGLES;
-
-    const float tmpx = tex2D(EX_texture,colix,tl[tl_i1])*alphas[rel_index] + tex2D(EX_texture,colix,tl[tl_i2])*betas[rel_index] + tex2D(EX_texture,colix,tl[tl_i3])*gammas[rel_index];
-    const float tmpy = tex2D(EY_texture,colix,tl[tl_i1])*alphas[rel_index] + tex2D(EY_texture,colix,tl[tl_i2])*betas[rel_index] + tex2D(EY_texture,colix,tl[tl_i3])*gammas[rel_index];
-    const float tmpz = tex2D(EZ_texture,colix,tl[tl_i1])*alphas[rel_index] + tex2D(EZ_texture,colix,tl[tl_i2])*betas[rel_index] + tex2D(EZ_texture,colix,tl[tl_i3])*gammas[rel_index];
-
-    REX[idx] = tmpx*R00 + tmpy*R01 + tmpz*R02;
-    REY[idx] = tmpx*R10 + tmpy*R11 + tmpz*R12;
-    REZ[idx] = tmpx*R20 + tmpy*R21 + tmpz*R22;
-}
-
-
-
-__global__ void render_identity_basis_texture(
-        const float* __restrict__ alphas, const float* __restrict__ betas, const float* __restrict__ gammas,
-        const uint* __restrict__ indices, const int N1, const ushort* __restrict__ tl,
-        float* __restrict__ RIX, float* __restrict__ RIY, float* __restrict__ RIZ,
-        const ushort* __restrict__ triangle_idx, const ushort Kalpha,
-        const int N_TRIANGLES)
-{
-    const int rowix = blockIdx.x;
-    const int colix = threadIdx.x;
-
-    const int rel_index = indices[rowix];
-
-    //! Important! We fill REX, ... in a ROW-MAJOR order. This way it will be easier to extract a submatrix of REX that ignores the bottom of REX
-    const int idx = threadIdx.x + Kalpha*blockIdx.x;
-
-    const int tl_i1 = triangle_idx[rel_index];
-    const int tl_i2 = tl_i1 + N_TRIANGLES;
-    const int tl_i3 = tl_i2 + N_TRIANGLES;
-
-    RIX[idx] = tex2D(IX_texture,colix,tl[tl_i1])*alphas[rel_index] + tex2D(IX_texture,colix,tl[tl_i2])*betas[rel_index] + tex2D(IX_texture,colix,tl[tl_i3])*gammas[rel_index];
-    RIY[idx] = tex2D(IY_texture,colix,tl[tl_i1])*alphas[rel_index] + tex2D(IY_texture,colix,tl[tl_i2])*betas[rel_index] + tex2D(IY_texture,colix,tl[tl_i3])*gammas[rel_index];
-    RIZ[idx] = tex2D(IZ_texture,colix,tl[tl_i1])*alphas[rel_index] + tex2D(IZ_texture,colix,tl[tl_i2])*betas[rel_index] + tex2D(IZ_texture,colix,tl[tl_i3])*gammas[rel_index];
-}
-
-
-
-__global__ void render_texture_basis_texture(
-        const float* __restrict__ alphas, const float* __restrict__ betas, const float* __restrict__ gammas,
-        const uint* __restrict__ indices, const int N1, const ushort* __restrict__ tl,
-        float* __restrict__ RTEX, const ushort* __restrict__ triangle_idx,
-        const ushort Kbeta, const int N_TRIANGLES)
-{
-    const int rowix = blockIdx.x;
-    const int colix = threadIdx.x;
-
-    const int rel_index = indices[rowix];
-
-    //! Important! We fill REX, ... in a ROW-MAJOR order. This way it will be easier to extract a submatrix of REX that ignores the bottom of REX
-    const int idx = threadIdx.x + Kbeta*blockIdx.x;
-
-    const int tl_i1 = triangle_idx[rel_index];
-    const int tl_i2 = tl_i1 + N_TRIANGLES;
-    const int tl_i3 = tl_i2 + N_TRIANGLES;
-
-    RTEX[idx] = tex2D(TEX_texture,colix,tl[tl_i1])*alphas[rel_index] + tex2D(TEX_texture,colix,tl[tl_i2])*betas[rel_index] + tex2D(TEX_texture,colix,tl[tl_i3])*gammas[rel_index];
-}
-
-
-
-
-
 
 
 
@@ -328,28 +205,28 @@ int fit_video_frames_landmarks_sparse(Camera &cam0,
     std::string device = "CPU";
     std::string framework = "caffe";
 
-    Net detection_net = cv::dnn::readNetFromCaffe(caffeConfigFile, caffeWeightFile);
-    // detection_net.setPreferableBackend(DNN_BACKEND_CUDA);
-    // detection_net.setPreferableTarget(DNN_TARGET_CUDA);
+    cv::dnn::Net detection_net = cv::dnn::readNetFromCaffe(caffeConfigFile, caffeWeightFile);
+    // detection_net.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
+    // detection_net.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
 
     std::string tfLandmarkNet("models/landmark_models/model_FAN_frozen.pb");
-    Net landmark_net = cv::dnn::readNetFromTensorflow(tfLandmarkNet);
-    landmark_net.setPreferableBackend(DNN_BACKEND_CUDA);
-    landmark_net.setPreferableTarget(DNN_TARGET_CUDA);
+    cv::dnn::Net landmark_net = cv::dnn::readNetFromTensorflow(tfLandmarkNet);
+    landmark_net.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
+    landmark_net.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
 
-    Net leye_net = cv::dnn::readNetFromTensorflow("models/landmark_models/m-64l64g0-64-128-5121968464leye.pb");
-    leye_net.setPreferableBackend(DNN_BACKEND_CUDA);
-    leye_net.setPreferableTarget(DNN_TARGET_CUDA);
+    cv::dnn::Net leye_net = cv::dnn::readNetFromTensorflow("models/landmark_models/m-64l64g0-64-128-5121968464leye.pb");
+    leye_net.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
+    leye_net.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
 
-    Net reye_net = cv::dnn::readNetFromTensorflow("models/landmark_models/m-64l64g0-64-128-5121968464reye.pb");
-    reye_net.setPreferableBackend(DNN_BACKEND_CUDA);
-    reye_net.setPreferableTarget(DNN_TARGET_CUDA);
+    cv::dnn::Net reye_net = cv::dnn::readNetFromTensorflow("models/landmark_models/m-64l64g0-64-128-5121968464reye.pb");
+    reye_net.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
+    reye_net.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
 
-    Net mouth_net = cv::dnn::readNetFromTensorflow("models/landmark_models/m-64l64g0-64-128-5121968464mouth.pb");
-    mouth_net.setPreferableBackend(DNN_BACKEND_CUDA);
-    mouth_net.setPreferableTarget(DNN_TARGET_CUDA);
+    cv::dnn::Net mouth_net = cv::dnn::readNetFromTensorflow("models/landmark_models/m-64l64g0-64-128-5121968464mouth.pb");
+    mouth_net.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
+    mouth_net.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
 
-    Net correction_net = cv::dnn::readNetFromTensorflow("models/landmark_models/model_correction.pb");
+    cv::dnn::Net correction_net = cv::dnn::readNetFromTensorflow("models/landmark_models/model_correction.pb");
 
     cv::VideoCapture capture(filepath);
     int FPS = capture.get(cv::CAP_PROP_FPS);

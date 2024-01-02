@@ -50,7 +50,7 @@
 
 using std::string;
 using std::vector;
-
+/*
 // these exist on the GPU side
 texture<float,2> EX_texture;
 texture<float,2> EY_texture;
@@ -61,6 +61,7 @@ texture<float,2> IY_texture;
 texture<float,2> IZ_texture;
 
 texture<float,2> TEX_texture;
+*/
 
 bool fit_multiframe(Camera &cam, Renderer &r, const std::vector<std::vector<float> >& selected_frame_xps, const  std::vector<std::vector<float> >& selected_frame_yps,
                    const std::vector<std::vector<float> >& selected_frame_xranges, const  std::vector<std::vector<float> >& selected_frame_yranges,
@@ -165,7 +166,7 @@ int main(int argc, char** argv)
     cudaChannelFormatDesc desc = cudaCreateChannelDesc<float>();
     cudaChannelFormatDesc desc2 = cudaCreateChannelDesc<float>();
     cudaChannelFormatDesc desc3 = cudaCreateChannelDesc<float>();
-
+    /*
     // Start with expression bases
     cudaBindTexture2D(0, EX_texture, r.d_EX_row_major, desc, config::K_EPSILON, config::NPTS, r.pitch);
     cudaBindTexture2D(0, EY_texture, r.d_EY_row_major, desc, config::K_EPSILON, config::NPTS, r.pitch);
@@ -184,6 +185,7 @@ int main(int argc, char** argv)
     {
         cudaBindTexture2D(0, TEX_texture, r.d_TEX_row_major, desc3, config::NTEX_COEFS, config::NPTS, r.pitch3);
     }
+    */
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -309,6 +311,7 @@ int main(int argc, char** argv)
         }
     }
 
+    /*
     if (r.use_expression)
     {
         cudaUnbindTexture(EX_texture);
@@ -327,6 +330,8 @@ int main(int argc, char** argv)
     {
         cudaUnbindTexture(TEX_texture);
     }
+    */
+    return 0;
 }
 
 
@@ -336,7 +341,7 @@ int main(int argc, char** argv)
 
 
 
-
+/*
 __global__ void render_expression_basis_texture_colmajor_rotated2(
         const float* __restrict__ alphas, const float* __restrict__ betas, const float* __restrict__ gammas,
         const uint* __restrict__ indices, const int Nunique_pixels, const ushort* __restrict__ tl,
@@ -424,7 +429,7 @@ __global__ void render_texture_basis_texture(
 
 
 
-
+*/
 
 
 
