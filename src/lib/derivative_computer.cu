@@ -179,13 +179,13 @@ void DerivativeComputer::compute_hessian_and_gradient(ushort t,
         HANDLE_ERROR( cudaMalloc( (void**)&d_obj_ineqs, sizeof(float)) );
 
         li.compute_gradient_and_hessian(handle, o.ov_ptr, d_obj_ineqs);
-
-        if (use_texture)
+        if (use_texture && o.ov_ptr->Kbeta > 0)
         {
-            update_gradient<<<(o.ov_ptr->Kbeta+NTHREADS-1)/NTHREADS, NTHREADS>>>(li.f_beta_lb, li.f_beta_ub, o.dG_dtheta, o.ov_ptr->Kbeta, 0);
-            update_diagonal_of_hessian_wbounds<<<1, o.ov_ptr->Kbeta>>>(li.f_beta_lb, li.f_beta_ub, o.JTJ, o.ov_ptr->Kbeta, o.ov_ptr->Ktotal, 0);
+            update_gradient<<<1, o.ov_ptr->Kbeta>>>(li.f_beta_lb, li.f_beta_ub, o.dG_dtheta, o.ov_ptr->Kbeta, 0);
+            cudaDeviceSynchronize();
+            update_diagonal_of_hessian_wbounds<<<1, o.ov_ptr->Kbeta>>>(li.f_beta_lb, li.f_beta_ub, o.JTJ, o.ov_ptr->Kbeta, o.ov_ptr->Ktotal, 0, false   );
+            cudaDeviceSynchronize();
         }
-
         const uint K_except_texture = o.ov_ptr->Ktotal - o.ov_ptr->Kbeta;
 
         // <!-- focus here -->
@@ -203,7 +203,6 @@ void DerivativeComputer::compute_hessian_and_gradient(ushort t,
             cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, 1, 1, o.ov_ptr->Kbeta, &plus_one_, li.vecOnes, 1, li.f_beta_lb, o.ov_ptr->Kbeta, &plus_one_, d_obj_ineqs, 1);
             cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, 1, 1, o.ov_ptr->Kbeta, &plus_one_, li.vecOnes, 1, li.f_beta_ub, o.ov_ptr->Kbeta, &plus_one_, d_obj_ineqs, 1);
         }
-
         //////////multiply_and_add_to_scalar<<<1,1>>>(o.ov_ptr->grad_corr, &plus_one_, d_obj_ineqs);
         add_to_scalar_negated<<<1,1>>>(o.ov_ptr->grad_corr,  d_obj_ineqs);
         cudaFree(d_obj_ineqs);

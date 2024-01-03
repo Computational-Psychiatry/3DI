@@ -929,8 +929,7 @@ __global__ void update_gradient(const float *vec_lb, const float *vec_ub, float 
 }
 
 
-
-__global__ void update_diagonal_of_hessian_wbounds(const float *vec_lb, const float *vec_ub, float *A, uint Kvec, uint Asize, uint vec_offset)
+__global__ void update_diagonal_of_hessian_wbounds(const float *vec_lb, const float *vec_ub, float *A, uint Kvec, uint Asize, uint vec_offset, bool print_debug)
 {
     const int rowix = blockIdx.x;
     const int colix = threadIdx.x;
@@ -940,10 +939,12 @@ __global__ void update_diagonal_of_hessian_wbounds(const float *vec_lb, const fl
     if (n >= Kvec)
         return;
 
-    const float nablaf_ub = -1.0f/vec_ub[n];
-    const float nablaf_lb = 1.0f/vec_lb[n];
+    const float nablaf_ub = -1.0f/(vec_ub[n]+1e-12);
+    const float nablaf_lb = 1.0f/(vec_lb[n]+1e-12);
 
     A[Asize*(n+vec_offset)+n+vec_offset] += nablaf_ub*nablaf_ub + nablaf_lb*nablaf_lb;
+    if (print_debug)
+        printf("%d: A[%d]=%.3f ", n, Asize*(n+vec_offset)+n+vec_offset, A[Asize*(n+vec_offset)+n+vec_offset]);
 }
 
 

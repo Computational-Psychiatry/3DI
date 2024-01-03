@@ -457,8 +457,8 @@ void Renderer::initialize_texture_memories()
 {
     cudaDeviceProp prop;
     cudaGetDeviceProperties(&prop, 0);
-    printf("texturePitchAlignment: %lu\n", prop.texturePitchAlignment);
-//    size_t pitch;
+    // printf("texturePitchAlignment: %lu\n", prop.texturePitchAlignment);
+    // size_t pitch;
 
     dim3 threads(4, 4);
 
@@ -560,7 +560,6 @@ void Renderer::initialize_texture_memories()
 
     if (use_texture && Kbeta > 0)
     {
-        std::cout << "Kbeta  === " << Kbeta<< std::endl;
         memset(&tex_resDesc, 0, sizeof(tex_resDesc));
         tex_resDesc.resType = cudaResourceTypePitch2D;
         tex_resDesc.res.pitch2D.devPtr = d_TEX_row_major;

@@ -24,7 +24,7 @@
 __global__ void multiply_matrix_scalar(float *A, const float alpha, const uint Asize);
 __global__ void multiply_vector_scalar(float *v, const float alpha, const uint vsize);
 
-__global__ void update_diagonal_of_hessian_wbounds(const float *vec_lb, const float *vec_ub, float *A, uint Kvec, uint Asize, uint vec_offset);
+__global__ void update_diagonal_of_hessian_wbounds(const float *vec_lb, const float *vec_ub, float *A, uint Kvec, uint Asize, uint vec_offset, bool print_debug=false);
 __global__ void update_diagonal_of_hessian_wvector(const float *vec, float *A, uint Kvec, uint Asize, uint vec_offset);
 
 __global__ void update_diags_and_offdiags_for_expdiffs(float *A, const int T, const int Keps, const int Ktotal, const float *weight);
