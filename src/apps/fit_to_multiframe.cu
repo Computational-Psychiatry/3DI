@@ -44,31 +44,14 @@
 
 #endif
 
-
-//using namespace cv;
-//using namespace cv::dnn;
-
 using std::string;
 using std::vector;
-/*
-// these exist on the GPU side
-texture<float,2> EX_texture;
-texture<float,2> EY_texture;
-texture<float,2> EZ_texture;
 
-texture<float,2> IX_texture;
-texture<float,2> IY_texture;
-texture<float,2> IZ_texture;
-
-texture<float,2> TEX_texture;
-*/
 
 bool fit_multiframe(Camera &cam, Renderer &r, const std::vector<std::vector<float> >& selected_frame_xps, const  std::vector<std::vector<float> >& selected_frame_yps,
                    const std::vector<std::vector<float> >& selected_frame_xranges, const  std::vector<std::vector<float> >& selected_frame_yranges,
                    const std::vector< cv::Mat >& selected_frames,
                    float *h_X0, float *h_Y0, float *h_Z0, float *h_tex_mu, std::vector<std::string>* result_basepaths=NULL);
-
-using std::vector;
 
 int create_data_for_multiframe(Renderer &r, const std::string& outdir, Camera &cam0,
                                vector<vector<float> >& xps, vector<vector<float> >& yps,
@@ -77,13 +60,6 @@ int create_data_for_multiframe(Renderer &r, const std::string& outdir, Camera &c
                                cv::dnn::Net &detection_net, cv::dnn::Net &landmark_net, cv::dnn::Net &leye_net, cv::dnn::Net &reye_net, cv::dnn::Net &mouth_net, cv::dnn::Net &correction_net,
                                float &mean_face_size,
                                bool set_RESIZE_COEF_via_median=true, int combination_id = -1);
-
-//const int KERNEL_RADIUS=2;
-
-// /media/v/SSD1TB/dataset/videos/treecam/ML/ML0001.mp4 /media/v/SSD1TB/dataset/videos/treecam/ML/ML0001.mp4.avi
-// /media/v/SSD1TB/dataset/Florence/images/for_experiments/ /media/v/SSD1TB/dataset/Florence/results/3DIv2
-
-// /media/v/SSD1TB/dataset/BU4DFE/images/ /media/v/SSD1TB/dataset/BU4DFE/results/3DIv2
 
 int main(int argc, char** argv)
 {
@@ -125,6 +101,9 @@ int main(int argc, char** argv)
 
     std::string config_filepath(argv[2]);
     config::set_params_from_YAML_file(config_filepath);
+    if (!config::check_all_necessary_files())
+        return 1;
+
 
     std::stringstream strStream;
     strStream << inFile.rdbuf(); //read the file
@@ -157,61 +136,27 @@ int main(int argc, char** argv)
 
 
     Renderer r(config::NFRAMES, 199, 199, config::K_EPSILON, true, true, true);
-    // Bind texture memories
-    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    cudaChannelFormatDesc desc = cudaCreateChannelDesc<float>();
-    cudaChannelFormatDesc desc2 = cudaCreateChannelDesc<float>();
-    cudaChannelFormatDesc desc3 = cudaCreateChannelDesc<float>();
-    /*
-    // Start with expression bases
-    cudaBindTexture2D(0, EX_texture, r.d_EX_row_major, desc, config::K_EPSILON, config::NPTS, r.pitch);
-    cudaBindTexture2D(0, EY_texture, r.d_EY_row_major, desc, config::K_EPSILON, config::NPTS, r.pitch);
-    cudaBindTexture2D(0, EZ_texture, r.d_EZ_row_major, desc, config::K_EPSILON, config::NPTS, r.pitch);
-
-    // Now identity bases
-    if (r.use_identity)
-    {
-        cudaBindTexture2D(0, IX_texture, r.d_IX_row_major, desc2, config::NID_COEFS, config::NPTS, r.pitch2);
-        cudaBindTexture2D(0, IY_texture, r.d_IY_row_major, desc2, config::NID_COEFS, config::NPTS, r.pitch2);
-        cudaBindTexture2D(0, IZ_texture, r.d_IZ_row_major, desc2, config::NID_COEFS, config::NPTS, r.pitch2);
-    }
-
-    // Finally the texture bases
-    if (r.use_texture)
-    {
-        cudaBindTexture2D(0, TEX_texture, r.d_TEX_row_major, desc3, config::NTEX_COEFS, config::NPTS, r.pitch3);
-    }
-    */
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 
     cv::dnn::Net detection_net = cv::dnn::readNetFromCaffe(caffeConfigFile, caffeWeightFile);
     detection_net.setPreferableBackend(cv::dnn::DNN_TARGET_CPU);
 
-    std::string tfLandmarkNet("models/landmark_models/model_FAN_frozen.pb");
-    cv::dnn::Net landmark_net = cv::dnn::readNetFromTensorflow(tfLandmarkNet);
+    cv::dnn::Net landmark_net = cv::dnn::readNetFromTensorflow(config::LANDMARK_MPATH);
     landmark_net.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
     landmark_net.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
 
-    cv::dnn::Net leye_net = cv::dnn::readNetFromTensorflow("models/landmark_models/m-64l64g0-64-128-5121968464leye.pb");
+    cv::dnn::Net leye_net = cv::dnn::readNetFromTensorflow(config::LANDMARK_LEYE_MPATH);
     leye_net.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
     leye_net.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
 
-    cv::dnn::Net reye_net = cv::dnn::readNetFromTensorflow("models/landmark_models/m-64l64g0-64-128-5121968464reye.pb");
+    cv::dnn::Net reye_net = cv::dnn::readNetFromTensorflow(config::LANDMARK_REYE_MPATH);
     reye_net.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
     reye_net.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
 
-    cv::dnn::Net mouth_net = cv::dnn::readNetFromTensorflow("models/landmark_models/m-64l64g0-64-128-5121968464mouth.pb");
+    cv::dnn::Net mouth_net = cv::dnn::readNetFromTensorflow(config::LANDMARK_MOUTH_MPATH);
     mouth_net.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
     mouth_net.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
 
-    cv::dnn::Net correction_net = cv::dnn::readNetFromTensorflow("models/landmark_models/model_correction.pb");
+    cv::dnn::Net correction_net = cv::dnn::readNetFromTensorflow(config::LANDMARK_CORRECTION_MPATH);
 
     int combination_id = 0;
 
@@ -278,8 +223,6 @@ int main(int argc, char** argv)
                 continue;
 	    }
 
-//            cam0.update_camera(config::REF_FACE_SIZE/mean_face_size);
-//            cam0.update_camera(0.5f);
             cam0.update_camera(1.0f);
 
             float *h_X0, *h_Y0, *h_Z0, *h_tex_mu;
@@ -311,125 +254,10 @@ int main(int argc, char** argv)
         }
     }
 
-    /*
-    if (r.use_expression)
-    {
-        cudaUnbindTexture(EX_texture);
-        cudaUnbindTexture(EY_texture);
-        cudaUnbindTexture(EZ_texture);
-    }
-
-    if (r.use_identity)
-    {
-        cudaUnbindTexture(IX_texture);
-        cudaUnbindTexture(IY_texture);
-        cudaUnbindTexture(IZ_texture);
-    }
-
-    if (r.use_texture)
-    {
-        cudaUnbindTexture(TEX_texture);
-    }
-    */
     return 0;
 }
 
 
-
-
-
-
-
-
-/*
-__global__ void render_expression_basis_texture_colmajor_rotated2(
-        const float* __restrict__ alphas, const float* __restrict__ betas, const float* __restrict__ gammas,
-        const uint* __restrict__ indices, const int Nunique_pixels, const ushort* __restrict__ tl,
-        float*  __restrict__ REX, float*  __restrict__ REY, float*  __restrict__ REZ,
-        const ushort* __restrict__ triangle_idx, const float* R__, int N_TRIANGLES, uint Nredundant)
-{
-    const int rowix = blockIdx.x;
-    const int colix = threadIdx.x;
-    __shared__ float R[9];
-
-    if (colix < 9) {
-        R[colix] = R__[colix];
-    }
-    __syncthreads();
-
-    const float R00 = R[0]; const float R10 = R[1]; const float R20 = R[2];
-    const float R01 = R[3]; const float R11 = R[4]; const float R21 = R[5];
-    const float R02 = R[6]; const float R12 = R[7]; const float R22 = R[8];
-
-    const int rel_index = indices[rowix];
-
-    const int idx = threadIdx.x*Nredundant + blockIdx.x;
-
-    const int tl_i1 = triangle_idx[rel_index];
-    const int tl_i2 = tl_i1 + N_TRIANGLES;
-    const int tl_i3 = tl_i2 + N_TRIANGLES;
-
-    const float tmpx = tex2D(EX_texture,colix,tl[tl_i1])*alphas[rel_index] + tex2D(EX_texture,colix,tl[tl_i2])*betas[rel_index] + tex2D(EX_texture,colix,tl[tl_i3])*gammas[rel_index];
-    const float tmpy = tex2D(EY_texture,colix,tl[tl_i1])*alphas[rel_index] + tex2D(EY_texture,colix,tl[tl_i2])*betas[rel_index] + tex2D(EY_texture,colix,tl[tl_i3])*gammas[rel_index];
-    const float tmpz = tex2D(EZ_texture,colix,tl[tl_i1])*alphas[rel_index] + tex2D(EZ_texture,colix,tl[tl_i2])*betas[rel_index] + tex2D(EZ_texture,colix,tl[tl_i3])*gammas[rel_index];
-
-    REX[idx] = tmpx*R00 + tmpy*R01 + tmpz*R02;
-    REY[idx] = tmpx*R10 + tmpy*R11 + tmpz*R12;
-    REZ[idx] = tmpx*R20 + tmpy*R21 + tmpz*R22;
-}
-
-
-
-__global__ void render_identity_basis_texture(
-        const float* __restrict__ alphas, const float* __restrict__ betas, const float* __restrict__ gammas,
-        const uint* __restrict__ indices, const int N1, const ushort* __restrict__ tl,
-        float* __restrict__ RIX, float* __restrict__ RIY, float* __restrict__ RIZ,
-        const ushort* __restrict__ triangle_idx, const ushort Kalpha, const int N_TRIANGLES)
-{
-    const int rowix = blockIdx.x;
-    const int colix = threadIdx.x;
-
-    const int rel_index = indices[rowix];
-
-    //! Important! We fill REX, ... in a ROW-MAJOR order. This way it will be easier to extract a submatrix of REX that ignores the bottom of REX
-    const int idx = threadIdx.x + Kalpha*blockIdx.x;
-
-    const int tl_i1 = triangle_idx[rel_index];
-    const int tl_i2 = tl_i1 + N_TRIANGLES;
-    const int tl_i3 = tl_i2 + N_TRIANGLES;
-
-    RIX[idx] = tex2D(IX_texture,colix,tl[tl_i1])*alphas[rel_index] + tex2D(IX_texture,colix,tl[tl_i2])*betas[rel_index] + tex2D(IX_texture,colix,tl[tl_i3])*gammas[rel_index];
-    RIY[idx] = tex2D(IY_texture,colix,tl[tl_i1])*alphas[rel_index] + tex2D(IY_texture,colix,tl[tl_i2])*betas[rel_index] + tex2D(IY_texture,colix,tl[tl_i3])*gammas[rel_index];
-    RIZ[idx] = tex2D(IZ_texture,colix,tl[tl_i1])*alphas[rel_index] + tex2D(IZ_texture,colix,tl[tl_i2])*betas[rel_index] + tex2D(IZ_texture,colix,tl[tl_i3])*gammas[rel_index];
-}
-
-
-
-__global__ void render_texture_basis_texture(
-        const float* __restrict__ alphas, const float* __restrict__ betas, const float* __restrict__ gammas,
-        const uint* __restrict__ indices, const int N1, const ushort* __restrict__ tl,
-        float* __restrict__ RTEX, const ushort* __restrict__ triangle_idx,
-        const ushort Kbeta, const int N_TRIANGLES)
-{
-    const int rowix = blockIdx.x;
-    const int colix = threadIdx.x;
-
-    const int rel_index = indices[rowix];
-
-    //! Important! We fill REX, ... in a ROW-MAJOR order. This way it will be easier to extract a submatrix of REX that ignores the bottom of REX
-    const int idx = threadIdx.x + Kbeta*blockIdx.x;
-
-    const int tl_i1 = triangle_idx[rel_index];
-    const int tl_i2 = tl_i1 + N_TRIANGLES;
-    const int tl_i3 = tl_i2 + N_TRIANGLES;
-
-    RTEX[idx] = tex2D(TEX_texture,colix,tl[tl_i1])*alphas[rel_index] + tex2D(TEX_texture,colix,tl[tl_i2])*betas[rel_index] + tex2D(TEX_texture,colix,tl[tl_i3])*gammas[rel_index];
-}
-
-
-
-
-*/
 
 
 

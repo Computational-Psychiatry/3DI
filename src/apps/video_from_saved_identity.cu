@@ -62,6 +62,9 @@ int main(int argc, char** argv)
     std::string landmarks_path(argv[2]);
     std::string config_filepath(argv[3]);
     config::set_params_from_YAML_file(config_filepath);
+    if (!config::check_all_necessary_files())
+        return 1;
+
 
     if (argc < 3) {
         std::cout << "we need at least 2 arguments (the 2nd needs to be output dir)" << std::endl;

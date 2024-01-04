@@ -106,12 +106,22 @@ namespace config
 
     extern std::string TL_PATH; // triangulation path
 
-    extern std::string SIGMA_ALPHAS_PATH, SIGMA_BETAS_PATH, SIGMA_EPS_PATH;
+    extern std::string SIGMA_ALPHAS_PATH, SIGMA_BETAS_PATH;
 
     extern std::string AL60_PATH, AL_FULL_PATH, EL_PATH, EL_FULL_PATH; // expression basis (landmarks)
     extern std::string EXP_LOWER_BOUND_PATH, EXP_UPPER_BOUND_PATH; // paths to the files that contain lower and upper bounds
     extern std::string P0L_PATH;
     extern std::vector<uint> LIS; // landmark ids
+
+    /**
+     * @brief Files for face and facial landmark detection models
+     */
+    extern std::string FACE_DETECTOR_DPATH, FACE_DETECTOR_MPATH;
+    extern std::string LANDMARK_MODELS_DIR;
+    extern std::string LANDMARK_MPATH;
+    extern std::string LANDMARK_LEYE_MPATH, LANDMARK_REYE_MPATH, LANDMARK_MOUTH_MPATH;
+    extern std::string LANDMARK_CORRECTION_MPATH;
+
 
     extern int lmk_lec, lmk_rec;
 
@@ -136,6 +146,9 @@ namespace config
     void set_params_from_YAML_file(const std::string& filepath);
 
     std::string get_key();
+
+    bool check_all_necessary_files();
+    bool check_detector_models();
 }
 
 #endif // CONFIG_H

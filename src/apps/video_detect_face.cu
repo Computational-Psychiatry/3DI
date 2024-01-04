@@ -17,6 +17,9 @@ int main(int argc, char** argv)
         return -1;
     }
 
+    if (!config::check_detector_models())
+        return 1;
+
     LandmarkData ld;
     ld.detect_faces(video_filepath, rects_filepath);
 }

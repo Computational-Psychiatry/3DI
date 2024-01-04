@@ -27,6 +27,9 @@ int main(int argc, char** argv)
         config_filepath = std::string(argv[4]);
 
     config::set_params_from_YAML_file(config_filepath);
+    if (!config::check_all_necessary_files())
+        return 1;
+
     LandmarkData ld(video_filepath, rects_filepath, landmarks_filepath);
     return 1;
 }

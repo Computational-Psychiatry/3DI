@@ -7,6 +7,9 @@
 #include "config.h"
 #include "constants.h"
 
+#include <experimental/filesystem>
+
+
 namespace config
 {
     double OPTS_DELTA = 0.66;
@@ -117,13 +120,24 @@ namespace config
 
     std::string TL_PATH; // triangulation path
 
-    std::string SIGMA_ALPHAS_PATH, SIGMA_BETAS_PATH, SIGMA_EPS_PATH;
+    std::string SIGMA_ALPHAS_PATH, SIGMA_BETAS_PATH;
     std::string AL60_PATH, AL_FULL_PATH, EL_PATH, EL_FULL_PATH; // expression basis (landmarks)
 
     std::string EXP_LOWER_BOUND_PATH;
     std::string EXP_UPPER_BOUND_PATH;
     std::string P0L_PATH;
     std::vector<uint> LIS;
+
+
+
+    std::string FACE_DETECTOR_DPATH = "models/deploy.prototxt";
+    std::string FACE_DETECTOR_MPATH = "models/res10_300x300_ssd_iter_140000_fp16.caffemodel";
+    std::string LANDMARK_MPATH = "models/landmark_models/model_FAN_frozen.pb";
+    std::string LANDMARK_MODELS_DIR = "models/landmark_models";
+    std::string LANDMARK_LEYE_MPATH = "models/landmark_models/m-64l64g0-64-128-5121968464leye.pb";
+    std::string LANDMARK_REYE_MPATH = "models/landmark_models/m-64l64g0-64-128-5121968464reye.pb";
+    std::string LANDMARK_MOUTH_MPATH = "models/landmark_models/m-64l64g0-64-128-5121968464mouth.pb";
+    std::string LANDMARK_CORRECTION_MPATH = "models/landmark_models/model_correction.pb";
 
     int lmk_lec = 19;
     int lmk_rec = 28;
@@ -556,4 +570,163 @@ namespace config
 
         return ss.str();
     }
+
+    /**
+     * @brief Check that all files needed by 3DI (model files etc.) are where they need to be.
+     * @return
+     */
+    bool check_all_necessary_files()
+    {
+        /**
+         * @brief (1) First check 3DMM model files
+         */
+        std::vector<std::string> model_files;
+        model_files.push_back(EX_PATH);
+        model_files.push_back(EY_PATH);
+        model_files.push_back(EZ_PATH);
+
+        model_files.push_back(IX_PATH);
+        model_files.push_back(IY_PATH);
+        model_files.push_back(IZ_PATH);
+
+        model_files.push_back(X0_PATH);
+        model_files.push_back(Y0_PATH);
+        model_files.push_back(Z0_PATH);
+
+        model_files.push_back(TL_PATH);
+        model_files.push_back(TEX_PATH);
+        model_files.push_back(TEXMU_PATH);
+
+        model_files.push_back(SIGMA_ALPHAS_PATH);
+        model_files.push_back(SIGMA_BETAS_PATH);
+
+        model_files.push_back(AL60_PATH);
+        model_files.push_back(AL_FULL_PATH);
+        model_files.push_back(EL_PATH);
+        model_files.push_back(EL_FULL_PATH);
+
+        model_files.push_back(EXP_LOWER_BOUND_PATH);
+        model_files.push_back(EXP_UPPER_BOUND_PATH);
+        model_files.push_back(P0L_PATH);
+
+        bool success = true;
+        for (std::string& model_file : model_files)
+        {
+            if (!std::experimental::filesystem::exists(model_file)) {
+                std::cerr << "Model file not found at expected location: " << model_file << std::endl;
+                std::cerr << "Make sure that you downloaded the BFM and preprocessed it by following the README instructions." << std::endl;
+                success = false;
+            }
+        }
+
+
+        /**
+         * @brief (2) Now check face/landmark detection models
+         */
+        std::vector<std::string> landmark_files;
+
+        landmark_files.push_back(FACE_DETECTOR_DPATH);
+        landmark_files.push_back(FACE_DETECTOR_MPATH);
+        landmark_files.push_back(LANDMARK_MPATH);
+        landmark_files.push_back(LANDMARK_LEYE_MPATH);
+        landmark_files.push_back(LANDMARK_REYE_MPATH);
+        landmark_files.push_back(LANDMARK_MOUTH_MPATH);
+        landmark_files.push_back(LANDMARK_CORRECTION_MPATH);
+
+
+        for (std::string& landmark_file : landmark_files)
+        {
+            if (!std::experimental::filesystem::exists(landmark_file)) {
+                std::cerr << "Model file not found at expected location: " << landmark_file << std::endl;
+                std::cerr << "Make sure that you downloaded the models for face and landmark detection by following the README instructions." << std::endl;
+                success = false;
+            }
+        }
+
+        return success && check_detector_models();
+    }
+
+    bool check_detector_models()
+    {
+        bool success = true;
+
+        /**
+         * @brief Check face/landmark detection models
+         */
+        std::vector<std::string> landmark_files;
+
+        landmark_files.push_back(FACE_DETECTOR_DPATH);
+        landmark_files.push_back(FACE_DETECTOR_MPATH);
+        landmark_files.push_back(LANDMARK_LEYE_MPATH);
+        landmark_files.push_back(LANDMARK_REYE_MPATH);
+        landmark_files.push_back(LANDMARK_MOUTH_MPATH);
+        landmark_files.push_back(LANDMARK_CORRECTION_MPATH);
+
+
+        for (std::string& landmark_file : landmark_files)
+        {
+            if (!std::experimental::filesystem::exists(landmark_file)) {
+                std::cerr << "Model file not found at expected location: " << landmark_file << std::endl;
+                std::cerr << "Make sure that you downloaded the models for face and landmark detection by following the README instructions." << std::endl;
+                success = false;
+            }
+        }
+
+        /**
+         * @brief Check landmark bound related files
+         */
+
+        std::vector<std::string> landmark_bound_files;
+
+        for (size_t i=0; i<NLANDMARKS_51; ++i)
+        {
+            std::string extension_partbased("dangle15_pctile_2.00");
+            std::string extension_global;
+
+            if (config::USE_CONSTANT_BOUNDS == 1) {
+                extension_global = "dangle120_pctile_1.50";
+            } else {
+                extension_global = "dangle12_pctile_1.50";
+            }
+
+            std::stringstream ss1, ss2, ss3;
+            if (config::USE_LOCAL_MODELS)
+            {
+                ss1 << config::LANDMARK_MODELS_DIR << "/bounds/ymins_" << std::setfill('0') << std::setw(2) << i+1 << "_" << extension_partbased << ".txt";
+                ss2 << config::LANDMARK_MODELS_DIR << "/bounds/ymaxs_" << std::setfill('0') << std::setw(2) << i+1 << "_" << extension_partbased << ".txt";
+            }
+            else
+            {
+                ss1 << config::LANDMARK_MODELS_DIR << "/bounds/ymins_nopart_" << std::setfill('0') << std::setw(2) << i+1 << "_" << extension_global << ".txt";
+                ss2 << config::LANDMARK_MODELS_DIR << "/bounds/ymaxs_nopart_" << std::setfill('0') << std::setw(2) << i+1 << "_" << extension_global << ".txt";
+            }
+
+            landmark_bound_files.push_back(ss1.str());
+            landmark_bound_files.push_back(ss2.str());
+
+            if (config::USE_LOCAL_MODELS) {
+                ss3 << config::LANDMARK_MODELS_DIR << "/bounds/bound_estimator_" << std::setfill('0') << std::setw(2) << i+1 << "_" << extension_partbased << ".pb";
+            } else {
+                ss3 << config::LANDMARK_MODELS_DIR << "/bounds/bound_estimator_nopart_" << std::setfill('0') << std::setw(2) << i+1 << "_" << extension_global << ".pb";
+            }
+            landmark_bound_files.push_back(ss3.str());
+        }
+
+        landmark_bound_files.push_back("models/dat_files/bounds_fao_lx.dat_36_1.50_partbased");
+        landmark_bound_files.push_back("models/dat_files/bounds_fao_ly.dat_36_1.50_partbased");
+        landmark_bound_files.push_back("models/dat_files/bounds_fao_ux.dat_36_1.50_partbased");
+        landmark_bound_files.push_back("models/dat_files/bounds_fao_uy.dat_36_1.50_partbased");
+
+        for (std::string& lb_file : landmark_bound_files)
+        {
+            if (!std::experimental::filesystem::exists(lb_file)) {
+                std::cerr << "Model file not found at expected location: " << lb_file << std::endl;
+                std::cerr << "Make sure that you downloaded the models for face and landmark detection by following the README instructions." << std::endl;
+                success = false;
+            }
+        }
+
+        return success;
+    }
+
 }
