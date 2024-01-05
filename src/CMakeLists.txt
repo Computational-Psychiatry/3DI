@@ -14,8 +14,8 @@ find_path(CUDA_SDK_ROOT_DIR common/inc/cutil.h)
 set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};-use_fast_math)
 
 
-find_package( OpenCV REQUIRED )
 find_package( CUDA REQUIRED )
+find_package( OpenCV REQUIRED )
 
 set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};-use_fast_math)
 

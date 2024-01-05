@@ -32,7 +32,6 @@
 
 #include "input_data.h"
 
-#include <glob.h> // glob(), globfree()
 #include <string.h> // memset()
 #include <stdexcept>
 #include <sstream>
@@ -141,7 +140,7 @@ int main(int argc, char** argv)
 
     LandmarkData::check_CUDA(LANDMARK_DETECTOR_BACKEND, LANDMARK_DETECTOR_TARGET);
 
-    Renderer r(config::NFRAMES, config::K_ALPHA, config::K_BETA, config::K_EPSILON, true, true, true);
+    Renderer r(config::NFRAMES, config::NID_COEFS, config::NTEX_COEFS, config::K_EPSILON, true, true, true);
 
     cv::dnn::Net detection_net = cv::dnn::readNetFromCaffe(caffeConfigFile, caffeWeightFile);
     detection_net.setPreferableBackend(cv::dnn::DNN_TARGET_CPU);
@@ -176,17 +175,12 @@ int main(int argc, char** argv)
             continue;
         }
 
-
-        std::cout << imfiles[0] << std::endl;
-
         if (!cam0.initialized)
         {
             cv::Mat im = cv::imread(imfiles[0]);
 
             float cam_cx = im.cols/2.0;
             float cam_cy = im.rows/2.0;
-            //cam_cx = 997.2f;
-            //cam_cy = 706.5f;
 
             double angle_x = field_of_view*M_PI/180.0; // angle in radians
             //double angle_y = angle_x; //60.0f*M_PI/180.0; //(cam_cy/cam_cx)*angle_x;
@@ -197,16 +191,12 @@ int main(int argc, char** argv)
             if (field_of_view == field_of_viewy) {
                 cam_alphay = cam_alphax;
             }
-            std::cout << cam_alphax << std::endl;
-            std::cout << cam_alphay << std::endl;
-            //float cam_alphay = cam_alphax; //cam_cy/(tan(angle_y/2.0));
-
             cam0.init(cam_alphax, cam_alphay, cam_cx, cam_cy, false);
         }
 
         combination_id++;
 
-        std::cout << "CUR_COMBINATION:  " << cur_combination << std::endl;
+        std::cout << "COMBINATION:  " << cur_combination << std::endl;
         try {
             vector<vector<float> > xps, yps, xranges, yranges;
             vector<cv::Mat> selected_frames;
@@ -288,8 +278,6 @@ bool fit_multiframe(Camera &cam0, Renderer& r, const std::vector<std::vector<flo
 
     setConvolutionKernel(h_Kernel);
 
-
-
     cusolverDnHandle_t handleDn;
     cusolverDnCreate(&handleDn);
 
@@ -312,23 +300,13 @@ bool fit_multiframe(Camera &cam0, Renderer& r, const std::vector<std::vector<flo
     ov.set_frame(0);
     ov_linesearch.set_frame(0);
 
-
     RotationComputer rc(ov.u);
     RotationComputer rc_linesearch(ov_linesearch.u);
-
-
-
 
     Solver s(handleDn, ov.Ktotal);
     Solver s_lambda(handleDn, 3);
 
-
-
-
-
     cudaEvent_t     start, stop;
-    // rendered expression basis
-
 
     float *d_tmp;
     float *search_dir_Lintensity, *dg_Lintensity;
@@ -356,17 +334,15 @@ bool fit_multiframe(Camera &cam0, Renderer& r, const std::vector<std::vector<flo
         cams.back().update_camera(config::REF_FACE_SIZE/compute_face_size(&xtmp[0], &ytmp[0]));
     }
 
-    std::cout << "BEFORE MULTI" << std::endl;
     bool success = fit_to_multi_images(cams, selected_frame_xps, selected_frame_yps,
                                 selected_frame_xranges, selected_frame_yranges, selected_frames,
                                 result_basepaths, r,  o, handleDn,
                                 handle, d_cropped_face, d_buffer_face, ov, ov_linesearch, ov_lb, ov_lb_linesearch, rc,
                                 rc_linesearch,  dc, s, s_lambda, d_tmp, search_dir_Lintensity, dg_Lintensity,
                             h_X0, h_Y0, h_Z0, h_tex_mu);
-    std::cout << "AFTER MULTI -- success: "<< success << std::endl;
 
+    std::cout << "Success: "<< success << std::endl;
 
-    // get stop time, and display the timing results
     cudaEventRecord( stop, 0 );
     cudaEventSynchronize( stop );
     cusolverDnDestroy(handleDn);
@@ -379,17 +355,10 @@ bool fit_multiframe(Camera &cam0, Renderer& r, const std::vector<std::vector<flo
     float   elapsedTime;
     cudaEventElapsedTime( &elapsedTime, start, stop );
 
-    //!printf( "Time to generate:  %3.1f ms\n", elapsedTime );
-
-
-
     cudaFree( d_cropped_face );
     cudaFree( d_buffer_face );
 
-
     cublasDestroy(handle);
-
-    //!std::cout << "Cleaned everything " << std::endl;
 
     return success;
 
@@ -407,37 +376,6 @@ bool fit_multiframe(Camera &cam0, Renderer& r, const std::vector<std::vector<flo
 
 
 
-
-
-
-std::vector<std::string> glob(const std::string& pattern) {
-    using namespace std;
-
-    // glob struct resides on the stack
-    glob_t glob_result;
-    memset(&glob_result, 0, sizeof(glob_result));
-
-    // do the glob operation
-    int return_value = glob(pattern.c_str(), GLOB_TILDE, NULL, &glob_result);
-    if(return_value != 0) {
-        globfree(&glob_result);
-        stringstream ss;
-        ss << "glob() failed with return_value " << return_value << endl;
-        throw std::runtime_error(ss.str());
-    }
-
-    // collect all the filenames into a std::list<std::string>
-    vector<string> filenames;
-    for(size_t i = 0; i < glob_result.gl_pathc; ++i) {
-        filenames.push_back(string(glob_result.gl_pathv[i]));
-    }
-
-    // cleanup
-    globfree(&glob_result);
-
-    // done
-    return filenames;
-}
 
 
 

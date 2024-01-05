@@ -70,9 +70,7 @@ namespace config
     extern int NFRAMES_PER_ANGLE_BIN;
     extern int NTEX_COEFS;
     extern int NID_COEFS;
-    extern int K_BETA;
     extern int K_BETA_L;
-    extern int K_ALPHA;
     extern int K_ALPHA_L;
 
     extern int PRINT_EVERY_N_FRAMES;

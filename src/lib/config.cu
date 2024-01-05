@@ -79,8 +79,6 @@ namespace config
     int NFRAMES_PER_ANGLE_BIN = 14;
     int NTEX_COEFS;
     int NID_COEFS;
-    int K_ALPHA;
-    int K_BETA;
     int K_ALPHA_L;
     int K_BETA_L;
 
@@ -158,7 +156,6 @@ namespace config
           */
         NID_COEFS = 199;
         NTEX_COEFS = 199;
-        K_ALPHA = NID_COEFS;
         K_ALPHA_L = 60;
         K_BETA_L = 0;
 
