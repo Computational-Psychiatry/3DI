@@ -24,8 +24,12 @@ parser.add_argument('--out_rootpath', type=str, default='./output')
 parser.add_argument('--cfgid', type=int, default=1)
 parser.add_argument('--fov', type=int, default=20)
 parser.add_argument('--which_bfm', type=str, default='BFMmm-23660')
+parser.add_argument('--delete_tmp_files', type=int, default=1,
+                    help="""Delete temporary files that are used to predict the face shape.
+                        (One may want to keep them for inspection.)""")
 
 args = parser.parse_args()
+args.delete_tmp_files = bool(args.delete_tmp_files)
 
 ims = glob(f'{args.ims_path}/*png')+glob(f'{args.ims_path}/*jpg')
 
@@ -45,11 +49,11 @@ if Ntot_frames < 2:
 if not os.path.exists(args.out_rootpath):
     os.mkdir(args.out_rootpath)
     
-tmp_out_dir = f'{args.out_rootpath}/3DI-cfg{args.cfgid}-cam{args.fov}-tmp-{args.subj_key}'
+tmp_out_dir = f'{args.out_rootpath}/3DI-cfg{args.cfgid}-cam{args.fov}-{args.which_bfm}-tmp-{args.subj_key}'
 if not os.path.exists(tmp_out_dir):
     os.mkdir(tmp_out_dir)
     
-out_dir = f'{args.out_rootpath}/3DI-cfg{args.cfgid}-cam{args.fov}'
+out_dir = f'{args.out_rootpath}/3DI-cfg{args.cfgid}-cam{args.fov}-{args.which_bfm}'
 if not os.path.exists(out_dir):
     os.mkdir(out_dir)
 
@@ -117,5 +121,27 @@ for of in out_files:
 P = np.mean(outs, axis=0)
 np.savetxt(out_fpath, P)
 
-shutil.rmtree(tmp_out_dir)
+if args.delete_tmp_files:
+    shutil.rmtree(tmp_out_dir)
+
+
+# The full BFM model has 53490 points
+est_full = np.zeros((53490, 3))
+
+ix_3di = np.loadtxt('misc/ix_3di_23660.txt').astype(int)
+ix_common = np.loadtxt('misc/ix_common.txt').astype(int)
+
+np.savetxt('misc/ix_3di_23660.txt', ix_3di)
+est_full[ix_3di,:]  = P
+est = est_full[ix_common, :]
+
+"""
+import matplotlib.pyplot as plt
+plt.figure(figsize=(40, 20))
+plt.subplot(121)
+plt.plot(est[:,0], -est[:,1], '.')
+plt.subplot(122)
+plt.plot(est[:,2], -est[:,1], '.')
+"""
+
 
