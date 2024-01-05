@@ -30,7 +30,7 @@
 #include "solver.h"
 #include "preprocessing.h"
 
-
+#include "input_data.h"
 
 #include <glob.h> // glob(), globfree()
 #include <string.h> // memset()
@@ -60,6 +60,7 @@ int create_data_for_multiframe(Renderer &r, const std::string& outdir, Camera &c
                                cv::dnn::Net &detection_net, cv::dnn::Net &landmark_net, cv::dnn::Net &leye_net, cv::dnn::Net &reye_net, cv::dnn::Net &mouth_net, cv::dnn::Net &correction_net,
                                float &mean_face_size,
                                bool set_RESIZE_COEF_via_median=true, int combination_id = -1);
+
 
 int main(int argc, char** argv)
 {
@@ -135,26 +136,31 @@ int main(int argc, char** argv)
     }
 
 
-    Renderer r(config::NFRAMES, 199, 199, config::K_EPSILON, true, true, true);
+    cv::dnn::Backend LANDMARK_DETECTOR_BACKEND(cv::dnn::DNN_BACKEND_CUDA);
+    cv::dnn::Target LANDMARK_DETECTOR_TARGET(cv::dnn::DNN_TARGET_CUDA);
+
+    LandmarkData::check_CUDA(LANDMARK_DETECTOR_BACKEND, LANDMARK_DETECTOR_TARGET);
+
+    Renderer r(config::NFRAMES, config::K_ALPHA, config::K_BETA, config::K_EPSILON, true, true, true);
 
     cv::dnn::Net detection_net = cv::dnn::readNetFromCaffe(caffeConfigFile, caffeWeightFile);
     detection_net.setPreferableBackend(cv::dnn::DNN_TARGET_CPU);
 
     cv::dnn::Net landmark_net = cv::dnn::readNetFromTensorflow(config::LANDMARK_MPATH);
-    landmark_net.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
-    landmark_net.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
+    landmark_net.setPreferableBackend(LANDMARK_DETECTOR_BACKEND);
+    landmark_net.setPreferableTarget(LANDMARK_DETECTOR_TARGET);
 
     cv::dnn::Net leye_net = cv::dnn::readNetFromTensorflow(config::LANDMARK_LEYE_MPATH);
-    leye_net.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
-    leye_net.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
+    leye_net.setPreferableBackend(LANDMARK_DETECTOR_BACKEND);
+    leye_net.setPreferableTarget(LANDMARK_DETECTOR_TARGET);
 
     cv::dnn::Net reye_net = cv::dnn::readNetFromTensorflow(config::LANDMARK_REYE_MPATH);
-    reye_net.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
-    reye_net.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
+    reye_net.setPreferableBackend(LANDMARK_DETECTOR_BACKEND);
+    reye_net.setPreferableTarget(LANDMARK_DETECTOR_TARGET);
 
     cv::dnn::Net mouth_net = cv::dnn::readNetFromTensorflow(config::LANDMARK_MOUTH_MPATH);
-    mouth_net.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
-    mouth_net.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
+    mouth_net.setPreferableBackend(LANDMARK_DETECTOR_BACKEND);
+    mouth_net.setPreferableTarget(LANDMARK_DETECTOR_TARGET);
 
     cv::dnn::Net correction_net = cv::dnn::readNetFromTensorflow(config::LANDMARK_CORRECTION_MPATH);
 
@@ -432,7 +438,6 @@ std::vector<std::string> glob(const std::string& pattern) {
     // done
     return filenames;
 }
-
 
 
 

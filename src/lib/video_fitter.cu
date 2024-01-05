@@ -22,12 +22,6 @@ VideoFitter::VideoFitter(Camera &cam0,
                          float *_h_X0, float *_h_Y0, float *_h_Z0, float *_h_tex_mu):
     T(_nframes),
     use_temp_smoothing(_use_temp_smoothing), use_exp_regularization(_use_exp_regularization),
-    detection_net(cv::dnn::readNetFromCaffe(config::FACE_DETECTOR_DPATH, config::FACE_DETECTOR_MPATH)),
-    landmark_net(cv::dnn::readNetFromTensorflow(config::LANDMARK_MPATH)),
-    leye_net(cv::dnn::readNetFromTensorflow(config::LANDMARK_LEYE_MPATH)),
-    reye_net(cv::dnn::readNetFromTensorflow(config::LANDMARK_REYE_MPATH)),
-    mouth_net(cv::dnn::readNetFromTensorflow(config::LANDMARK_MOUTH_MPATH)),
-    correction_net(cv::dnn::readNetFromTensorflow(config::LANDMARK_CORRECTION_MPATH)),
     r(T, Kalpha, Kbeta, Kepsilon, Kalpha>0, Kbeta>0, Kepsilon>0, _h_X0, _h_Y0, _h_Z0, _h_tex_mu),
     ov(T, Kalpha, Kbeta, Kepsilon, Kalpha>0, Kbeta>0, Kepsilon>0),
     ov_lb(T, Kalpha_L, Kbeta_L, Kepsilon_L, Kalpha_L>0, Kbeta>0, Kepsilon_L>0, true),
@@ -48,17 +42,6 @@ VideoFitter::VideoFitter(Camera &cam0,
 
     for (size_t t=0; t<T; ++t)
         cams.push_back(Camera(cam0));
-
-    
-    detection_net.setPreferableBackend(cv::dnn::DNN_TARGET_CPU);
-    landmark_net.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
-    landmark_net.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
-    leye_net.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
-    leye_net.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
-    reye_net.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
-    reye_net.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
-    mouth_net.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
-    mouth_net.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
 
     // Check python code in the end of this file to see how this kernel is generated
 //    float h_Kernel[7] = {1.19794565e-08, 2.63865077e-04, 1.06450766e-01, 7.86570668e-01, 1.06450766e-01, 2.63865077e-04, 1.19794565e-08};
@@ -170,8 +153,7 @@ VideoOutput VideoFitter::fit_video_frames_auto(const std::string& filepath, Land
 
     for( int fi=0; fi<Nframes; ++fi)
     {
-        if (fi % config::PRINT_EVERY_N_FRAMES == 0)
-            std::cout << "\tframe# " << fi << "/" << Nframes << std::endl;
+        std::cout << "Processing frame #" << fi << "/" << Nframes << '\r' << std::flush;
 
         all_angles.push_back(std::vector<float>(9, 0.0f));
         float h_us[3] = {NAN, NAN, NAN};

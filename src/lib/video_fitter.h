@@ -71,16 +71,7 @@ struct VideoFitter
     cusolverDnHandle_t handleDn;
     cublasHandle_t handle;
 
-//    float *h_X0, *h_Y0, *h_Z0;
-//    float *h_tex_mu;
-
     float* d_cropped_face, *d_buffer_face;
-
-    Net detection_net;
-    Net landmark_net;
-    Net leye_net, reye_net, mouth_net;
-    Net correction_net;
-
     VideoFitter(Camera &cam0,
                 const ushort Kalpha = 0, const ushort Kbeta = 0, const ushort Kepsilon = config::K_EPSILON,
                 const ushort Kalpha_L= 0, const ushort Kbeta_L = 0, const ushort Kepsilon_L = config::K_EPSILON_L, size_t _Nframes=1,
@@ -102,11 +93,9 @@ struct VideoFitter
     RotationComputer rc;
     RotationComputer rc_linesearch;
 
-
     Solver s;
     Solver s_lb;
     Solver s_lambda;
-
 
     float *d_tmp;
     float *search_dir_Lintensity, *dg_Lintensity;

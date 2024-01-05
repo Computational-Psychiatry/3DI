@@ -30,6 +30,9 @@ int main(int argc, char** argv)
     if (!config::check_all_necessary_files())
         return 1;
 
+    const std::string caffeConfigFile = config::FACE_DETECTOR_DPATH;
+    const std::string caffeWeightFile = config::FACE_DETECTOR_MPATH;
+
     LandmarkData ld(video_filepath, rects_filepath, landmarks_filepath);
     return 1;
 }

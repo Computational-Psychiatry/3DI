@@ -84,8 +84,6 @@ namespace config
     int K_ALPHA_L;
     int K_BETA_L;
 
-
-
     int PRINT_EVERY_N_FRAMES = 100;
     int PRINT_WARNINGS = 0;
     int PRINT_DEBUG = 0;

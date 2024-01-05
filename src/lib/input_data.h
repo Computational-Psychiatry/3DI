@@ -33,6 +33,9 @@ struct LandmarkData
     vector<vector<float> > xp_vecs;
     vector<vector<float> > yp_vecs;
 
+    cv::dnn::Backend LANDMARK_DETECTOR_BACKEND = cv::dnn::DNN_BACKEND_CUDA;
+    cv::dnn::Target LANDMARK_DETECTOR_TARGET = cv::dnn::DNN_TARGET_CUDA;
+
     LandmarkData() {}
     LandmarkData(const std::string& landmarks_path);
     LandmarkData(const std::string& video_path, const std::string& faces_path, const std::string& landmarks_path);
@@ -46,6 +49,8 @@ struct LandmarkData
     vector<float> get_ypvec(size_t t) { return yp_vecs[t]; }
 
     int get_face_size(size_t t);
+
+    static bool check_CUDA(cv::dnn::dnn4_v20230620::Backend &LANDMARK_DETECTOR_BACKEND, cv::dnn::dnn4_v20230620::Target &LANDMARK_DETECTOR_TARGET);
 
     vector<vector<float> > detect_faces(const std::string& filepath, const std::string& rects_filepath);
     vector<vector<float> > detect_landmarks(const std::string &video_filepath, const vector<vector<float> > &face_rects, const std::string &landmarks_filepath);

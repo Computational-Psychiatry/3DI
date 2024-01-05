@@ -4,7 +4,6 @@
 #include <string>
 #include <opencv2/core.hpp>
 
-
 namespace config
 {
     extern double  OPTS_DELTA, OPTS_DELTA_BETA, OPTS_DELTA_EPS;

@@ -2,69 +2,20 @@
 #include "config.h"
 #include "video_fitter.h"
 #include <experimental/filesystem>
-#include <opencv2/imgcodecs.hpp>
-#include <opencv2/highgui.hpp>
 #include <opencv2/videoio.hpp>
-
 #include <string>
-#include <cmath>
-#include <deque>
-
 #include <vector>
-#include <stdio.h>
-#include <numeric>
-#include <random>
-#include <algorithm>    // std::shuffle
-#include <set>
-
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
-
 #include "constants.h"
-#include "renderer.h"
-
-#include "derivative_computer.h"
-#include "logbarrier_initializer.h"
-
-#include "model_fitter.h"
-#include "funcs.h"
-#include "newfuncs.h"
-#include "rotation_header.h"
-#include "Optimizer.h"
 #include "camera.h"
-#include "solver.h"
 #include "preprocessing.h"
-
-
-
-#include <glob.h> // glob(), globfree()
-#include <string.h> // memset()
 #include <stdexcept>
 #include <sstream>
-
-#include <opencv2/dnn.hpp>
-
-#ifdef VISUALIZE_3D
-#include "GLfuncs.h"
-
-#endif
-
-
-
-using std::vector;
-
-int create_data_for_multiframe(const std::string& imdir, Renderer &r, const std::string& outdir, const uint subj_id, float fovx, float fovy,
-                               vector<vector<float> >& xps, vector<vector<float> >& yps,
-                               vector<vector<float> >& xranges, vector<vector<float> >& yranges,
-                               vector<cv::Mat> &selected_frames, vector<std::string>& result_basepaths, const std::vector<int> &angle_idx,
-                               cv::dnn::Net &detection_net, cv::dnn::Net &landmark_net, cv::dnn::Net &leye_net, cv::dnn::Net &reye_net, cv::dnn::Net &mouth_net, cv::dnn::Net &correction_net,
-                               bool set_RESIZE_COEF_via_median=true, int combination_id = -1);
 
 
 int main(int argc, char** argv)
 {
-    ///////////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////////
     if (argc < 2) {
         std::cout << "You need at least one argument -- the filepath for the input video" << std::endl;
         return -1;
@@ -160,42 +111,6 @@ int main(int argc, char** argv)
 
     return 0;
 }
-
-
-
-
-std::vector<std::string> glob(const std::string& pattern) {
-    using namespace std;
-
-    // glob struct resides on the stack
-    glob_t glob_result;
-    memset(&glob_result, 0, sizeof(glob_result));
-
-    // do the glob operation
-    int return_value = glob(pattern.c_str(), GLOB_TILDE, NULL, &glob_result);
-    if(return_value != 0) {
-        globfree(&glob_result);
-        stringstream ss;
-        ss << "glob() failed with return_value " << return_value << endl;
-        throw std::runtime_error(ss.str());
-    }
-
-    // collect all the filenames into a std::list<std::string>
-    vector<string> filenames;
-    for(size_t i = 0; i < glob_result.gl_pathc; ++i) {
-        filenames.push_back(string(glob_result.gl_pathv[i]));
-    }
-
-    // cleanup
-    globfree(&glob_result);
-
-    // done
-    return filenames;
-}
-
-
-
-
 
 
 

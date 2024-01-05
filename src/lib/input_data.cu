@@ -64,12 +64,16 @@ void InputData::clear()
 
 LandmarkData::LandmarkData(const std::string& landmarks_path)
 {
+    LandmarkData::check_CUDA(LANDMARK_DETECTOR_BACKEND, LANDMARK_DETECTOR_TARGET);
+
     init_from_txtfile(landmarks_path);
 }
 
 
 LandmarkData::LandmarkData(const std::string &video_path, const std::string &faces_path, const std::string& landmarks_path)
 {
+    LandmarkData::check_CUDA(LANDMARK_DETECTOR_BACKEND, LANDMARK_DETECTOR_TARGET);
+
     vector<vector<float> > face_rects;
     if (std::experimental::filesystem::exists(faces_path))
         face_rects = read2DVectorFromFile_unknown_size<float>(faces_path);
@@ -113,7 +117,6 @@ void LandmarkData::fill_xpypvec(vector<vector<float> > &all_lmks)
 
 int LandmarkData::get_face_size(size_t t)
 {
-
     vector<float> xp_vec = get_xpvec(t);
     vector<float> yp_vec = get_ypvec(t);
 
@@ -129,12 +132,38 @@ int LandmarkData::get_face_size(size_t t)
     return (float) std::max<int>(face_width, face_height);
 }
 
+
+bool LandmarkData::check_CUDA(cv::dnn::Backend& LANDMARK_DETECTOR_BACKEND, cv::dnn::Target& LANDMARK_DETECTOR_TARGET)
+{
+    const std::string caffeConfigFile = config::FACE_DETECTOR_DPATH;
+    const std::string caffeWeightFile = config::FACE_DETECTOR_MPATH;
+    cv::dnn::Net landmark_net = cv::dnn::readNetFromTensorflow(config::LANDMARK_MPATH);
+
+    landmark_net.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
+    landmark_net.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
+
+    cv::Mat im_cropped(256, 256, CV_32FC3, cv::Scalar::all(1) );
+    cv::Mat net_input = cv::dnn::blobFromImage(im_cropped);
+    landmark_net.setInput(net_input);
+
+    try {
+        cv::Mat netOut = landmark_net.forward().clone();
+    } catch (cv::Exception) {
+        std::cout << "OpenCV does not seem to have been install with CUDA support. If you did install with CUDA support, you may have compiled it with the wrong CUDA_ARCH_BIN parameter. " << std::endl <<
+                     "Consider re-compiling OpenCV, and during compilation make sure that the CUDA_ARCH_BIN is the correct one for your device. (Our github repository contains a wiki page with compilation instructions.  )" << std::endl <<
+                     "Without CUDA support, landmark detection will be very slow." << std::endl;
+        LANDMARK_DETECTOR_BACKEND = cv::dnn::DNN_BACKEND_OPENCV;
+        LANDMARK_DETECTOR_TARGET = cv::dnn::DNN_TARGET_CPU;
+        return false;
+    }
+    return true;
+}
+
 vector<vector<float> > LandmarkData::detect_faces(const std::string& filepath, const std::string& rects_filepath)
 {
     const std::string caffeConfigFile = config::FACE_DETECTOR_DPATH;
     const std::string caffeWeightFile = config::FACE_DETECTOR_MPATH;
 
-    std::string device = "CPU";
     std::string framework = "caffe";
 
     cv::dnn::Net detection_net = cv::dnn::readNetFromCaffe(caffeConfigFile, caffeWeightFile);
@@ -195,20 +224,20 @@ vector<vector<float> > LandmarkData::detect_landmarks(const std::string &video_f
     cv::dnn::Net detection_net = cv::dnn::readNetFromCaffe(caffeConfigFile, caffeWeightFile);
 
     cv::dnn::Net landmark_net = cv::dnn::readNetFromTensorflow(config::LANDMARK_MPATH);
-    landmark_net.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
-    landmark_net.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
+    landmark_net.setPreferableBackend(LANDMARK_DETECTOR_BACKEND);
+    landmark_net.setPreferableTarget(LANDMARK_DETECTOR_TARGET);
 
     cv::dnn::Net leye_net = cv::dnn::readNetFromTensorflow(config::LANDMARK_LEYE_MPATH);
-    leye_net.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
-    leye_net.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
+    leye_net.setPreferableBackend(LANDMARK_DETECTOR_BACKEND);
+    leye_net.setPreferableTarget(LANDMARK_DETECTOR_TARGET);
 
     cv::dnn::Net reye_net = cv::dnn::readNetFromTensorflow(config::LANDMARK_REYE_MPATH);
-    reye_net.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
-    reye_net.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
+    reye_net.setPreferableBackend(LANDMARK_DETECTOR_BACKEND);
+    reye_net.setPreferableTarget(LANDMARK_DETECTOR_TARGET);
 
     cv::dnn::Net mouth_net = cv::dnn::readNetFromTensorflow(config::LANDMARK_MOUTH_MPATH);
-    mouth_net.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
-    mouth_net.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
+    mouth_net.setPreferableBackend(LANDMARK_DETECTOR_BACKEND);
+    mouth_net.setPreferableTarget(LANDMARK_DETECTOR_TARGET);
 
     cv::dnn::Net correction_net = cv::dnn::readNetFromTensorflow(config::LANDMARK_CORRECTION_MPATH);
 
@@ -219,10 +248,14 @@ vector<vector<float> > LandmarkData::detect_landmarks(const std::string &video_f
 
     cv::Mat frame;
 
+
+    int Nframes = std::min<int>(config::MAX_VID_FRAMES_TO_PROCESS, (int) capture.get(cv::CAP_PROP_FRAME_COUNT));
     int idx = 0;
     cv::Rect ROI(-1, -1, -1, -1);
     while (true) {
         idx++;
+
+        std::cout << "Processing frame #" << idx << "/" << Nframes << '\r' << std::flush;
 
         vector<float> xp_vec, yp_vec;
         vector<float> xrange, yrange;
@@ -283,6 +316,8 @@ vector<vector<float> > LandmarkData::detect_landmarks(const std::string &video_f
         if (idx > config::MAX_VID_FRAMES_TO_PROCESS)
             break;
     }
+
+    std::cout << std::endl;
 
     write_2d_vector<float>(landmarks_filepath, all_lmks);
 
