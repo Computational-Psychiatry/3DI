@@ -50,7 +50,7 @@ struct LandmarkData
 
     int get_face_size(size_t t);
 
-    static bool check_CUDA(cv::dnn::dnn4_v20230620::Backend &LANDMARK_DETECTOR_BACKEND, cv::dnn::dnn4_v20230620::Target &LANDMARK_DETECTOR_TARGET);
+    static bool check_CUDA(cv::dnn::Backend &LANDMARK_DETECTOR_BACKEND, cv::dnn::Target &LANDMARK_DETECTOR_TARGET);
 
     vector<vector<float> > detect_faces(const std::string& filepath, const std::string& rects_filepath);
     vector<vector<float> > detect_landmarks(const std::string &video_filepath, const vector<vector<float> > &face_rects, const std::string &landmarks_filepath);

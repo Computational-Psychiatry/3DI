@@ -148,6 +148,7 @@ std::vector<std::string> str_split (const std::string &s, char delim);
 
 
 bool check_if_bb_OK(float *xp, float *yp);
+bool check_if_face_in_frame(float *xp, float *yp, int imcols, int imrows);
 
 
 __global__ void fill_tex_im1(

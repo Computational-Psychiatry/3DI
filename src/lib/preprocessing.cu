@@ -44,6 +44,7 @@ void paint_innermouth_black(cv::Mat& frame, const std::vector<float>& xp_vec, co
 
     float face_size = compute_face_size(&xp_vec[0], &yp_vec[0]);
     float unit_pix = face_size/config::REF_FACE_SIZE;
+    
 
 
     for (uint i=43; i<=50; ++i) {
@@ -64,10 +65,13 @@ void paint_innermouth_black(cv::Mat& frame, const std::vector<float>& xp_vec, co
     std::vector<std::vector<cv::Point> > contours;
     cv::findContours( blankim, contours, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
 
-    float minx = *std::min_element(xp_vec.begin()+31, xp_vec.end());
-    float maxx = *std::max_element(xp_vec.begin()+31, xp_vec.end());
-    float miny = *std::min_element(yp_vec.begin()+31, yp_vec.end());
-    float maxy = *std::max_element(yp_vec.begin()+31, yp_vec.end());
+    float imw = (float) frame.cols;
+    float imh = (float) frame.rows;
+    
+    float minx = std::max<float>(0, *std::min_element(xp_vec.begin()+31, xp_vec.end()));
+    float maxx = std::min<float>(imw, *std::max_element(xp_vec.begin()+31, xp_vec.end()));
+    float miny = std::max<float>(0, *std::min_element(yp_vec.begin()+31, yp_vec.end()));
+    float maxy = std::min<float>(imh, *std::max_element(yp_vec.begin()+31, yp_vec.end()));
 
     float m1 = sqrtf((xp_vec[44]-xp_vec[50])*(xp_vec[44]-xp_vec[50])+(yp_vec[44]-yp_vec[50])*(yp_vec[44]-yp_vec[50]));
     float m2 = sqrtf((xp_vec[45]-xp_vec[49])*(xp_vec[45]-xp_vec[49])+(yp_vec[45]-yp_vec[49])*(yp_vec[45]-yp_vec[49]));

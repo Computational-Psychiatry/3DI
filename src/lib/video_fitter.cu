@@ -1402,6 +1402,12 @@ bool VideoFitter::output_landmarks_expression_variation(VideoOutput& out, std::s
 
 
 
+
+
+
+
+#ifdef VISUALIZE_3D
+
 bool VideoFitter::visualize_3dmesh(VideoOutput& out,
                                    std::string& input_path, std::string& output_path,
                                    vector<vector<float> >* all_exps, vector<vector<float> >* all_poses)
@@ -1743,7 +1749,6 @@ bool VideoFitter::visualize_texture(VideoOutput &out, std::string &input_path, s
 
 
 
-
 bool VideoFitter::generate_texture(int subj_id, int imwidth, const std::string& out_dir_root, const float fov_data, const float tz)
 {
     std::stringstream ss0;
@@ -1915,9 +1920,7 @@ bool VideoFitter::generate_texture(int subj_id, int imwidth, const std::string& 
 }
 
 
-
-
-
+#endif
 
 bool VideoFitter::learn_identity(const std::string& filepath, LandmarkData& ld, float *h_alphas, float *h_betas)
 {
@@ -1965,7 +1968,6 @@ bool VideoFitter::learn_identity(const std::string& filepath, LandmarkData& ld, 
         h_tex_mu_cur = (float*)malloc( config::NPTS*sizeof(float) );
 
         bool success = fit_multiframe(cxps, cyps, cxranges, cyranges, cframes, h_X0_cur, h_Y0_cur, h_Z0_cur, h_tex_mu_cur);
-
         if (success) {
             if (config::PRINT_DEBUG)
                 std::cout << "Success" << std::endl;
@@ -2109,6 +2111,9 @@ int VideoFitter::fit_video_frames_landmarks_sparse(const std::string& filepath,
     FPS = capture.get(cv::CAP_PROP_FPS);
 
     Ntotframes = std::min<int>(Ntotframes, ld.get_num_frames());
+
+    int VIDEO_WIDTH = capture.get(cv::CAP_PROP_FRAME_WIDTH);
+    int VIDEO_HEIGHT = capture.get(cv::CAP_PROP_FRAME_HEIGHT);
 
     int N_FRAMES_TO_CONSIDER = 800;
     int EVERY_N_FRAMES = 1;
@@ -2324,6 +2329,7 @@ int VideoFitter::fit_video_frames_landmarks_sparse(const std::string& filepath,
      */
 
         bool is_bb_OK = check_if_bb_OK(xp, yp);
+        bool is_face_in_frame = check_if_face_in_frame(xp, yp, cams0[0].resize_coef*((float) VIDEO_WIDTH),  cams0[0].resize_coef*((float) VIDEO_HEIGHT));
 
         float face_size = compute_face_size(xp, yp);
 
@@ -2348,7 +2354,7 @@ int VideoFitter::fit_video_frames_landmarks_sparse(const std::string& filepath,
 
         float yaw(NAN), pitch(NAN), roll(NAN);
 
-        if (li_init.fit_success && xp[0] != 0.0f && is_bb_OK)
+        if (li_init.fit_success && xp[0] != 0.0f && is_bb_OK && is_face_in_frame)
         {
             int yaw_idx, pitch_idx, roll_idx;
             li_init.rc.compute_euler_angles(yaw, pitch, roll);

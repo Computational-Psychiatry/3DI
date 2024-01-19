@@ -611,6 +611,19 @@ bool check_if_bb_OK(float *xp, float *yp)
 
 
 
+bool check_if_face_in_frame(float *xp, float *yp, int imcols, int imrows)
+{
+    float *x0f = thrust::min_element(thrust::host, xp, xp+NLANDMARKS_51);
+    float *y0f = thrust::min_element(thrust::host, yp, yp+NLANDMARKS_51);
+
+    float *xff = thrust::max_element(thrust::host, xp, xp+NLANDMARKS_51);
+    float *yff = thrust::max_element(thrust::host, yp, yp+NLANDMARKS_51);
+    
+    if (*x0f < 0 || *xff >= imcols || *y0f < 0 || *yff >= imrows)
+        return false;
+    
+    return true;
+}
 
 void print_matrix( void *d_A, int Nrows, int Ncols)
 {
