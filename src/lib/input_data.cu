@@ -62,6 +62,11 @@ void InputData::clear()
 }
 
 
+LandmarkData::LandmarkData()
+{
+    LandmarkData::check_CUDA(LANDMARK_DETECTOR_BACKEND, LANDMARK_DETECTOR_TARGET);
+}
+
 LandmarkData::LandmarkData(const std::string& landmarks_path)
 {
     LandmarkData::check_CUDA(LANDMARK_DETECTOR_BACKEND, LANDMARK_DETECTOR_TARGET);
@@ -146,6 +151,7 @@ bool LandmarkData::check_CUDA(cv::dnn::Backend& LANDMARK_DETECTOR_BACKEND, cv::d
     cv::Mat net_input = cv::dnn::blobFromImage(im_cropped);
     landmark_net.setInput(net_input);
 
+    //cv::Mat netOut = landmark_net.forward().clone();
     try {
         cv::Mat netOut = landmark_net.forward().clone();
     } catch (cv::Exception) {
@@ -167,6 +173,8 @@ vector<vector<float> > LandmarkData::detect_faces(const std::string& filepath, c
     std::string framework = "caffe";
 
     cv::dnn::Net detection_net = cv::dnn::readNetFromCaffe(caffeConfigFile, caffeWeightFile);
+    detection_net.setPreferableBackend(LANDMARK_DETECTOR_BACKEND);
+    detection_net.setPreferableTarget(LANDMARK_DETECTOR_TARGET);
 
     cv::VideoWriter video_out;
 
@@ -182,10 +190,10 @@ vector<vector<float> > LandmarkData::detect_faces(const std::string& filepath, c
     cv::Rect ROI(-1, -1, -1, -1);
 
     vector<vector<float> > face_rects;
-
     while (true) {
         idx++;
 
+        std::cout << "Processing frame #" << idx << '\r' << std::flush;
         vector<float> xp_vec, yp_vec;
         vector<float> xrange, yrange;
 

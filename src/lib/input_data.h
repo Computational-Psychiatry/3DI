@@ -36,7 +36,7 @@ struct LandmarkData
     cv::dnn::Backend LANDMARK_DETECTOR_BACKEND = cv::dnn::DNN_BACKEND_CUDA;
     cv::dnn::Target LANDMARK_DETECTOR_TARGET = cv::dnn::DNN_TARGET_CUDA;
 
-    LandmarkData() {}
+    LandmarkData();
     LandmarkData(const std::string& landmarks_path);
     LandmarkData(const std::string& video_path, const std::string& faces_path, const std::string& landmarks_path);
 
