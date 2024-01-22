@@ -371,7 +371,7 @@ bool fit_3DMM_shape_rigid(uint t, Renderer& r, Optimizer& o, Logbarrier_Initiali
 
     HANDLE_ERROR( cudaFree(logbarrier_multi_coef) );
 
-    return num_outer_iters > 6;
+    return num_outer_iters > config::NITERS_SUCCESS;
 }
 
 
@@ -657,7 +657,7 @@ bool fit_3DMM_epsilon_finetune(uint t, Renderer& r, Optimizer& o, Logbarrier_Ini
     HANDLE_ERROR( cudaMemcpy( li.epsilon_lb, li.epsilon_lb_regular, sizeof(float)*ov.Kepsilon, cudaMemcpyDeviceToDevice ) );
     HANDLE_ERROR( cudaMemcpy( li.epsilon_ub, li.epsilon_ub_regular, sizeof(float)*ov.Kepsilon, cudaMemcpyDeviceToDevice ) );
 
-    return num_outer_iters > 6;
+    return num_outer_iters > config::NITERS_SUCCESS;
 }
 
 
@@ -936,7 +936,7 @@ bool fit_3DMM_rigid_alone(uint t, Renderer& r, Optimizer& o, Logbarrier_Initiali
     HANDLE_ERROR( cudaMemcpy( li.epsilon_lb, li.epsilon_lb_regular, sizeof(float)*ov.Kepsilon, cudaMemcpyDeviceToDevice ) );
     HANDLE_ERROR( cudaMemcpy( li.epsilon_ub, li.epsilon_ub_regular, sizeof(float)*ov.Kepsilon, cudaMemcpyDeviceToDevice ) );
 
-    return num_outer_iters > 6;
+    return num_outer_iters > config::NITERS_SUCCESS;
 }
 
 

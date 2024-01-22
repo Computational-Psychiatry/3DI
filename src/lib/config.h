@@ -88,6 +88,7 @@ namespace config
     extern int FINETUNE_EXPRESSIONS;
     extern int NPTS;
     extern int N_TRIANGLES;
+    extern int NITERS_SUCCESS;
     extern uint Nredundant;
 
     extern float FINETUNE_COEF;

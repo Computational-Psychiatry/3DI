@@ -95,6 +95,7 @@ namespace config
     int FINETUNE_EXPRESSIONS = 0;
     int NPTS;
     int N_TRIANGLES;
+    int NITERS_SUCCESS = 6;
     uint Nredundant;
     float FINETUNE_COEF = 1.5f;
 
@@ -519,6 +520,9 @@ namespace config
 
         if (keys.find("USE_EXPR_COMPONENT") != keys.end())
             file["USE_EXPR_COMPONENT"] >> USE_EXPR_COMPONENT;
+
+        if (keys.find("NITERS_SUCCESS") != keys.end())
+            file["NITERS_SUCCESS"] >> NITERS_SUCCESS;
 
         if (keys.find("MM") != keys.end())
             file["MM"] >> MM;
