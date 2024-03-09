@@ -8,17 +8,18 @@ Created on Fri Aug  4 14:57:52 2023
 
 import os
 import sys
+import warnings
 
 import numpy as np
 import matplotlib.pyplot as plt
 
 from sklearn.decomposition import DictionaryLearning
+from sklearn.exceptions import ConvergenceWarning
 
-# expressions_dir = sys.argv[1] # '/media/v/SSD1TB/dataset/videos/treecam/ML/output/BFMmm-19830.cfg7.global4.curt'
-# morphable_model = sys.argv[2] # 'BFMmm-19830'
-# canonical_lmks_file = '/media/v/SSD1TB/dataset/videos/treecam/ML/output/BFMmm-19830.cfg7.global4.curt'
-canonical_lmks_file = sys.argv[1] # '/home/v/code/3DI/build/output/BFMmm-19830.cfg1.global4/elaine.canonical_lmks'
-local_exp_coeffs_file = sys.argv[2] # '/home/v/code/3DI/build/output/BFMmm-19830.cfg1.global4/elaine.local_bcoeffs.'
+#warnings.filterwarnings("ignore", category=ConvergenceWarning)
+
+canonical_lmks_file = sys.argv[1] 
+local_exp_coeffs_file = sys.argv[2]
 morphable_model = sys.argv[3] #  'BFMmm-19830'
 basis_version = sys.argv[4] # '0.0.1.4'
 
@@ -50,8 +51,11 @@ facial_feats = list(rel_ids.keys())
 
 T = P.shape[0]
 
+ConvergenceWarning('ignore')
+
 C = []
 for t in range(T):
+    print(f'{t}/{T}')
     cur = []
     for feat in facial_feats:
         rel_id = rel_ids[feat]
@@ -62,8 +66,8 @@ for t in range(T):
         z = p[2::3]
         
         dx = x-X0
-        dy = y-X0
-        dz = z-X0
+        dy = y-Y0
+        dz = z-Z0
         
         # @TODO the following code does not work for differential expression computation
         # but only for absolute expressions. It needs to be adapted to the case where
