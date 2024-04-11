@@ -83,13 +83,18 @@ int main(int argc, char** argv)
         }
     }
 
-    if (argc >= 6) {
-        if (!is_float(argv[5]))
+    int NFRAMES=-1;
+    if (argc >= 6)
+        NFRAMES=std::stoi(argv[5]);
+        
+
+    if (argc >= 7) {
+        if (!is_float(argv[6]))
         {
-            calibration_path = argv[5];
+            calibration_path = argv[6];
             cam0.init(calibration_path);
         } else {
-            field_of_viewy = std::stof(argv[5]);
+            field_of_viewy = std::stof(argv[6]);
             // Camera will be initialized later -- if necessary
         }
     }
@@ -101,6 +106,9 @@ int main(int argc, char** argv)
 
     std::string config_filepath(argv[2]);
     config::set_params_from_YAML_file(config_filepath);
+    if (NFRAMES != -1)
+        config::NFRAMES = NFRAMES;
+    
     if (!config::check_all_necessary_files())
         return 1;
 

@@ -36,9 +36,6 @@ X0 = P0[:,0]
 Y0 = P0[:,1]
 Z0 = P0[:,2]
 
-tex0 = np.loadtxt(f'{sdir}/tex_mu.dat')
-
-
 rel_ids   = {'lb': np.array(list(range(0, 5))),
              'rb': np.array(list(range(5, 10))),
              'no': np.array(list(range(10, 19))),

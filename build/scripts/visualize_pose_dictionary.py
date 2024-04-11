@@ -64,12 +64,13 @@ cfg_fpath = './configs/%s.cfg%d.%s.txt' % (morphable_model, cfgid, landmark_mode
 camera_param = '30'
 
 #tmp_local = 'tmp_local'
-tmp_dir = 'tmp_pose'
+tmp_dir = 'tmp_pose_dict'
 
 if not os.path.exists(tmp_dir):
     os.mkdir(tmp_dir)
 
-T = 120
+Z = np.loadtxt(dict_path)#(f'{os.path.expanduser("~")}/code/3DI/build/{tmp_dir}/Z.txt')
+T = int(Z.shape[1]/3)#120
 save_blank_video(T,  f'{tmp_dir}/blank.avi')
 illum = np.tile([48.06574, 9.913327, 798.2065, 0.005], (T, 1))
 # pose = np.tile([6.9, 43., 799.,-0.16, -0.39, 0.125, -0.38, -0.18, 0.16], (T, 1))
@@ -94,7 +95,8 @@ np.savetxt(illum_fpath, illum)
 np.savetxt(shp_fpath, shp)
 np.savetxt(tex_fpath, tex0)
 #Z = np.loadtxt(f'{os.path.expanduser("~")}/code/3DI/build/{tmp_dir}/Z.txt')
-Z = np.loadtxt(dict_path)#(f'{os.path.expanduser("~")}/code/3DI/build/{tmp_dir}/Z.txt')
+
+
 
 for bix in range(Z.shape[0]):
     

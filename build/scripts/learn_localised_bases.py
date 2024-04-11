@@ -17,9 +17,7 @@ import cv2
 from sklearn.decomposition import DictionaryLearning
 
 expressions_dir = sys.argv[1] # '/media/v/SSD1TB/dataset/videos/treecam/ML/output/BFMmm-19830.cfg7.global4.curt'
-morphable_model = sys.argv[2] # 'BFMmm-19830'
-# expressions_dir =  '/media/v/SSD1TB/dataset/videos/treecam/ML/output/BFMmm-19830.cfg7.global4.curt'
-# morphable_model = 'BFMmm-19830'
+morphable_model = sys.argv[2] # 'BFMmm-19830
 
 def create_expression_sequence(epsilons, E):
     ps = []
@@ -58,13 +56,13 @@ landmark_model = 'global4'
 cfg_fpath = './configs/%s.cfg%d.%s.txt' % (morphable_model, cfgid, landmark_model)
 camera_param = '30'
 
+T = 60
 tmp_local = 'tmp_local'
 
 if not os.path.exists(tmp_local):
     os.mkdir(tmp_local)
 
 
-T = 60
 save_blank_video(T,  f'{tmp_local}/blank.avi')
 
 illum = np.tile([48.06574, 9.913327, 798.2065, 0.005], (T, 1))
@@ -90,9 +88,18 @@ np.savetxt(shp_fpath, shp)
 np.savetxt(tex_fpath, tex0)
 
 
-files = glob(f'{expressions_dir}/*.expressions_smooth')
+files_all = glob(f'{expressions_dir}/*.expressions_smooth')
+files = []
 
-VERSION = '0.0.1.%d' % (len(files)) # version of the localized_basis
+for f in files_all:
+    if f.find('undistorted') >=0 :
+        continue
+    files.append(f)
+
+files = files[::2]
+
+algorithm = 'cd' 
+
 
 li = [17286,17577,17765,17885,18012,18542,18668,18788,18987,19236,7882,7896,7905,7911,6479,7323,
       7922,8523,9362,1586,3480,4770,5807,4266,3236, 10176,11203,12364,14269,12636,11602,5243,5875,
@@ -100,7 +107,7 @@ li = [17286,17577,17765,17885,18012,18542,18668,18788,18987,19236,7882,7896,7905
 
 li = np.array(li)
 
-rel_ids   = {'lb': np.array(list(range(0, 5))),
+rel_ids  =  {'lb': np.array(list(range(0, 5))),
              'rb': np.array(list(range(5, 10))),
              'no': np.array(list(range(10, 19))),
              'le': np.array(list(range(19, 25))),
@@ -115,7 +122,22 @@ num_comps = {'lb': 3+2,
              're': 3+2,
              'ul': 5+1,
              'll': 5+2+1}
+"""
 
+num_comps = {'lb': 3+1,
+             'rb': 3+1,
+             'no': 4,
+             'le': 3+1,
+             're': 3+1,
+             'ul': 5,
+             'll': 5+2}
+"""
+
+
+VERSION = '0.0.1.F%d-%s-K%d' % (len(files), algorithm, sum([num_comps[key] for key in num_comps])) # version of the localized_basis
+
+"""
+"""
 facial_feats = list(num_comps.keys())
 
 use_abs = True
@@ -134,6 +156,8 @@ for feat in facial_feats:
     xs = []
     dxs = []
     for file in files:
+        if file.find('undistorted') >= 0:
+            continue
         e = np.loadtxt(file)
         p = create_expression_sequence(e, E)
         xs.append(p)
@@ -148,13 +172,24 @@ for feat in facial_feats:
     es = []
     es_rec = []
     
-    basis = DictionaryLearning(n_components=K, fit_algorithm='cd',
-                                      transform_algorithm='lasso_cd', 
-                                      alpha=0.4,transform_alpha=0.4,
-                                      random_state=1907,
-                                      verbose=False, n_jobs=6)
-    
-    basis.fit(X[::10,:])
+    if algorithm == 'cd':
+        basis = DictionaryLearning(n_components=K, fit_algorithm='cd',
+                                          transform_algorithm='lasso_cd', 
+                                          alpha=0.4,transform_alpha=0.4,
+                                          random_state=1907,
+                                          max_iter=10000,
+                                          verbose=False, n_jobs=12)
+    elif algorithm == 'default':
+        basis = DictionaryLearning(n_components=K, alpha=0.4,transform_alpha=0.4,
+                                          #max_iter=5000,
+                                          random_state=1907,
+                                          verbose=False, n_jobs=1)
+        
+
+
+    print(X.shape)
+    X = X[::100,:]
+    basis.fit(X)
     W = basis.components_ # This is the basis
     X_transformed = basis.transform(X) #
     
@@ -177,12 +212,18 @@ for feat in facial_feats:
     """
     
     es.append(np.mean(basis.error_))
-    # es_rec.append(np.linalg.norm(dX_rec-dX, 'fro'))
     
     basis_set[feat] = basis
-    basis_set['%s_min' % feat] = np.percentile(X_transformed, 0.1, axis=0)
-    basis_set['%s_max' % feat] = np.percentile(X_transformed, 99.9, axis=0)
-    
+    basis_set[feat].stats = {'min_0.5pctl':  np.percentile(X_transformed, 0.5, axis=0),
+                             'max_99.5pctl':  np.percentile(X_transformed, 99.5, axis=0),
+                             'min_2.5pctl':  np.percentile(X_transformed, 2.5, axis=0),
+                             'max_97.5pctl':  np.percentile(X_transformed, 97.5, axis=0),
+                             'Q1':  np.percentile(X_transformed, 25.0, axis=0),
+                             'Q3':  np.percentile(X_transformed, 75.0, axis=0),
+                             'median': np.median(X_transformed, axis=0),
+                             'mean': np.mean(X_transformed, axis=0),
+                             'std': np.std(X_transformed, axis=0)}
+
 
 bdir = '%s/E/localized_basis' % sdir
 if not os.path.exists(bdir):
@@ -194,7 +235,6 @@ if basis_set['use_abs']:
     isd = 'd'
 
 target_fpath = '%s/v.%s%s.npy' % (bdir, VERSION, isd)
-
 np.save(target_fpath, basis_set)
 
 #%%
@@ -206,14 +246,14 @@ EZ  = np.loadtxt('%s/E/EZ_79.dat' % sdir)[li,:]
 Efull = np.concatenate((EX, EY, EZ), axis=0)
 
 bix = 0
-p0 = np.loadtxt('/home/v/code/3DI/build/models/MMs/BFMmm-19830/p0L_mat.dat')
+p0 = np.loadtxt(f'./models/MMs/{morphable_model}/p0L_mat.dat')
 for feat in facial_feats:
     rel_id = rel_ids[feat]
     
     for k in range(0, basis_set['num_comps'][feat]):
         zs = np.zeros((T, Efull.shape[1]))
-        xmin = basis_set['%s_min' % feat][k]
-        xmax = basis_set['%s_max' % feat][k]
+        xmin = basis_set[feat].stats['min_0.5pctl'][k]
+        xmax = basis_set[feat].stats['max_99.5pctl'][k]
         
         dx = (xmax-xmin)/T
         

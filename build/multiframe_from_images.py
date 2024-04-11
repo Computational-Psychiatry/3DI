@@ -21,6 +21,7 @@ parser.add_argument('--ims_path', type=str, default='./ims/',
                     All images must be of the same size and (ideally) be recorded with the same camera.""")
 parser.add_argument('--subj_key', type=str, default=None)
 parser.add_argument('--out_rootpath', type=str, default='./output')
+parser.add_argument('--add_params_to_output', type=int, default=0)
 parser.add_argument('--cfgid', type=int, default=1)
 parser.add_argument('--fov', type=int, default=20)
 parser.add_argument('--which_bfm', type=str, default='BFMmm-23660')
@@ -42,10 +43,6 @@ if args.subj_key is None:
 
 Ntot_frames = len(ims)
 
-if Ntot_frames < 2:
-    print(f"{args.ims_path} needs to contain at least 2 images.", file=sys.stderr)
-    exit(1)
-
 if not os.path.exists(args.out_rootpath):
     os.mkdir(args.out_rootpath)
     
@@ -53,16 +50,22 @@ tmp_out_dir = f'{args.out_rootpath}/3DI-cfg{args.cfgid}-cam{args.fov}-{args.whic
 if not os.path.exists(tmp_out_dir):
     os.mkdir(tmp_out_dir)
     
-out_dir = f'{args.out_rootpath}/3DI-cfg{args.cfgid}-cam{args.fov}-{args.which_bfm}'
-if not os.path.exists(out_dir):
-    os.mkdir(out_dir)
+if args.add_params_to_output:
+    out_dir = f'{args.out_rootpath}/3DI-cfg{args.cfgid}-cam{args.fov}-{args.which_bfm}'
+    if not os.path.exists(out_dir):
+        os.mkdir(out_dir)
+else:
+    out_dir = args.out_rootpath
 
 out_fpath = f'{out_dir}/{args.subj_key}.txt'
 
 if os.path.exists(out_fpath):
-    print('Reconstruction for {args.subj_key} is done; see {out_fpath}')
+    print(f'Reconstruction for {args.subj_key} is done; see {out_fpath}')
     exit(0)
 
+if 1 == Ntot_frames:
+    Nframes_rec = 1
+    Ntot_recs = 1
 if 2 == Ntot_frames:
     Nframes_rec = 2
     Ntot_recs = 1
@@ -108,7 +111,7 @@ with open(imlist_file, 'w') as f:
 
 cfg_filepath = f'./configs/{args.which_bfm}.cfg{args.cfgid}.global4.txt'
 
-cmd = f'./fit_to_multiframe {imlist_file} {cfg_filepath} {args.fov} {tmp_out_dir}'
+cmd = f'./fit_to_multiframe {imlist_file} {cfg_filepath} {args.fov} {tmp_out_dir} {Nframes_rec}'
 print(cmd)
 os.system(cmd)
 
@@ -119,7 +122,6 @@ for of in out_files:
     outs.append(np.loadtxt(of))
 
 P = np.mean(outs, axis=0)
-np.savetxt(out_fpath, P)
 
 if args.delete_tmp_files:
     shutil.rmtree(tmp_out_dir)
@@ -135,6 +137,7 @@ np.savetxt('misc/ix_3di_23660.txt', ix_3di)
 est_full[ix_3di,:]  = P
 est = est_full[ix_common, :]
 
+np.savetxt(out_fpath, est)
 """
 import matplotlib.pyplot as plt
 plt.figure(figsize=(40, 20))
