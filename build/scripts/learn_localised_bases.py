@@ -11,6 +11,7 @@ import sys
 from glob import glob
 import numpy as np
 import matplotlib.pyplot as plt
+from common import rel_ids, create_expression_sequence
 
 import cv2
 
@@ -19,13 +20,6 @@ from sklearn.decomposition import DictionaryLearning
 expressions_dir = sys.argv[1] # '/media/v/SSD1TB/dataset/videos/treecam/ML/output/BFMmm-19830.cfg7.global4.curt'
 morphable_model = sys.argv[2] # 'BFMmm-19830
 
-def create_expression_sequence(epsilons, E):
-    ps = []
-    for t in range(epsilons.shape[0]):
-        epsilon = epsilons[t,:]
-        p = ((E @ epsilon)).reshape(-1,1)
-        ps.append(p)
-    return np.array(ps)[:,:,0]
 
 def save_blank_video(T, videpath):
     # Define video properties
@@ -74,6 +68,7 @@ Y0 = np.loadtxt(f'{sdir}/Y0_mean.dat').reshape(-1,1)
 Z0 = np.loadtxt(f'{sdir}/Z0_mean.dat').reshape(-1,1)
 
 tex0 = np.loadtxt(f'{sdir}/tex_mu.dat')
+li = np.loadtxt(f'{sdir}/li.dat').astype(int)
 
 shp = np.concatenate((X0, Y0, Z0), axis=1)
 
@@ -98,22 +93,7 @@ for f in files_all:
 
 files = files[::2]
 
-algorithm = 'cd' 
-
-
-li = [17286,17577,17765,17885,18012,18542,18668,18788,18987,19236,7882,7896,7905,7911,6479,7323,
-      7922,8523,9362,1586,3480,4770,5807,4266,3236, 10176,11203,12364,14269,12636,11602,5243,5875,
-      7096,7936,9016,10244,10644,9638,8796,7956,7116,6269,5629,6985,7945,8905,10386,8669,7949,7229]
-
-li = np.array(li)
-
-rel_ids  =  {'lb': np.array(list(range(0, 5))),
-             'rb': np.array(list(range(5, 10))),
-             'no': np.array(list(range(10, 19))),
-             'le': np.array(list(range(19, 25))),
-             're': np.array(list(range(25, 31))),
-             'ul': np.array(list(range(31, 37))+list(range(43, 47))),
-             'll': np.array(list(range(37, 43))+list(range(47, 51)))}
+algorithm = 'cd'
 
 num_comps = {'lb': 3+2,
              'rb': 3+2,

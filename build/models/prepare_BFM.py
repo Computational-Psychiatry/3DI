@@ -111,7 +111,6 @@ def prepare_morphable_model():
 
     p0L_mat = mu3[oi,:]
 
-#%%
     pset_orig = set((np.array(ix_53215).astype(int)+1).tolist())
     old2new0 = {ix_53215[x]: x for x in range(len(ix_53215))}
     old2new_tl0 = {ix_53215[x]+1: x+1 for x in range(len(ix_53215))}
@@ -134,7 +133,6 @@ def prepare_morphable_model():
         for j in range(tl_pre.shape[1]):
             tl_pre[i,j] = old2new_tl0[tl_pre[i,j]]
             
-#%%
 
     pset_pre = set((np.array(ix_23660).astype(int)+1).tolist())
     old2new0 = {ix_23660[x]: x for x in range(len(ix_23660))}
@@ -158,7 +156,6 @@ def prepare_morphable_model():
             tl[i,j] = old2new_tl0[tl[i,j]]
             
 
-#%%
     X0 = mu3[:,0]
     Y0 = mu3[:,1]
     Z0 = mu3[:,2]
@@ -248,9 +245,9 @@ def prepare_morphable_model():
     lis_new = []
     for li in lis:
         lis_new.append(old2new[li])
+        
 
 
-#%%
     ext = 'mm'
     tdir = './MMs/BFM%s-%05d' % (ext, Nnew)
     if not os.path.exists(tdir):
@@ -291,7 +288,7 @@ def prepare_morphable_model():
     np.savetxt('%s/TEX.dat' % tdir, TEXnew)
     np.savetxt('%s/tex_mu.dat' % tdir, tex_mu_new)
     np.savetxt('%s/tl.dat' % tdir, tl_new, fmt='%d')
-
+    np.savetxt('%s/li.dat' % tdir, lis_new, fmt='%d')
     np.savetxt('%s/X0_mean.dat' % tdir, X0new)
     np.savetxt('%s/Y0_mean.dat' % tdir, Y0new)
     np.savetxt('%s/Z0_mean.dat' % tdir, Z0new)

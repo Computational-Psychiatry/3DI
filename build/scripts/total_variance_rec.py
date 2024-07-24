@@ -27,14 +27,13 @@ for i in range(e1.shape[1]):
     e1[:,i:i+1] = imputer.fit_transform(e1[:,i:i+1])
 
 
-li = [17286,17577,17765,17885,18012,18542,18668,18788,18987,19236,7882,7896,7905,7911,6479,7323,
-      7922,8523,9362,1586,3480,4770,5807,4266,3236, 10176,11203,12364,14269,12636,11602,5243,5875,
-      7096,7936,9016,10244,10644,9638,8796,7956,7116,6269,5629,6985,7945,8905,10386,8669,7949,7229]
-
 T = e1.shape[0]
 K = e1.shape[1]
 
 sdir = './models/MMs/%s' % morphable_model 
+li = np.loadtxt(f'{sdir}/li.dat').astype(int)
+
+
 EX  = np.loadtxt('%s/E/EX_79.dat' % sdir)[li,:]
 EY  = np.loadtxt('%s/E/EY_79.dat' % sdir)[li,:]
 EZ  = np.loadtxt('%s/E/EZ_79.dat' % sdir)[li,:]

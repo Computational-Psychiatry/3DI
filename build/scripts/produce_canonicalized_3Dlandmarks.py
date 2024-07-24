@@ -12,13 +12,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
-def create_expression_sequence(epsilons, E):
-    ps = []
-    for t in range(epsilons.shape[0]):
-        epsilon = epsilons[t,:]
-        p = ((E @ epsilon)).reshape(-1,1)
-        ps.append(p)
-    return np.array(ps)[:,:,0]
+from common import create_expression_sequence
 
 assert len(sys.argv) >= 4, """At least three arguments are needed to produce canonicalized landmarks: 
     #expression_path #landmark_path #morphable_model_name"""
@@ -38,11 +32,7 @@ if len(sys.argv) >= 5:
 
 assert os.path.exists(epath), 'Expression file does not exist!'
 
-li = [17286,17577,17765,17885,18012,18542,18668,18788,18987,19236,7882,7896,7905,7911,6479,7323,
-      7922,8523,9362,1586,3480,4770,5807,4266,3236, 10176,11203,12364,14269,12636,11602,5243,5875,
-      7096,7936,9016,10244,10644,9638,8796,7956,7116,6269,5629,6985,7945,8905,10386,8669,7949,7229]
-
-li = np.array(li)
+li = np.loadtxt(f'{sdir}/li.dat').astype(int)
 
 X0 = np.loadtxt(f'{sdir}/X0_mean.dat').reshape(-1,1)[li]
 Y0 = np.loadtxt(f'{sdir}/Y0_mean.dat').reshape(-1,1)[li]
