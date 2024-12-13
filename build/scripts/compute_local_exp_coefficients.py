@@ -22,6 +22,9 @@ exp_coeffs_file = sys.argv[1]
 local_exp_coeffs_file = sys.argv[2]
 morphable_model = sys.argv[3] #  'BFMmm-19830'
 basis_version = sys.argv[4] # '0.0.1.4'
+normalize = False
+if len(sys.argv) >= 6:
+    normalize = bool(int(sys.argv[5]))
 
 sdir = f'models/MMs/{morphable_model}/'
 localized_basis_file = f'models/MMs/{morphable_model}/E/localized_basis/v.{basis_version}.npy'
@@ -57,10 +60,24 @@ C = []
 for feat in facial_feats:
     rel_id = rel_ids[feat]
     dp = create_expression_sequence(epsilons, Es[feat])
-    coeffs = basis_set[feat].transform(dp).T
+    dictionary = basis_set[feat]
+    coeffs = dictionary.transform(dp).T
+
+    # normalize
+    # 'min_0.5pctl', 'max_99.5pctl', 'min_2.5pctl', 'max_97.5pctl', 'Q1', 'Q3', 'median', 'mean', 'std'
+    if normalize:
+        if hasattr(dictionary, 'stats'):
+            stats = dictionary.stats
+            stats_mean = stats['mean'].reshape([-1,1])
+            stats_std = stats['std'].reshape([-1,1])
+                      
+            # normalize (0-mean, 1-std)
+            coeffs = (coeffs - stats_mean) / stats_std
+        else:
+            print("Skipping normalization because stats on localized expressions is not available.")
 
     C.append(coeffs)
     
-C = np.concatenate(C)
+C = np.concatenate(C).T
 
-np.savetxt(local_exp_coeffs_file, C.T)
+np.savetxt(local_exp_coeffs_file, C)
