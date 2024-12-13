@@ -16,27 +16,27 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
-def save_identity_and_shape(alpha, beta, shp_path, tex_path, morphable_model):
-    sdir = './models/MMs/%s' % morphable_model 
-    IX  = np.loadtxt('%s/IX.dat' % sdir)
-    IY  = np.loadtxt('%s/IY.dat' % sdir)
-    IZ  = np.loadtxt('%s/IZ.dat' % sdir)
-    
-    TEX  = np.loadtxt('%s/TEX.dat' % sdir)
-    
-    tex_mu = np.loadtxt('%s/tex_mu.dat' % sdir)
-    
-    x0 = np.loadtxt('%s/X0_mean.dat' % sdir)
-    y0 = np.loadtxt('%s/Y0_mean.dat' % sdir)
-    z0 = np.loadtxt('%s/Z0_mean.dat' % sdir)
-    
-    x = (x0+(IX @ alpha)).reshape(-1,1)
-    y = (y0+(IY @ alpha)).reshape(-1,1)
-    z = (z0+(IZ @ alpha)).reshape(-1,1)
-    
-    tex = (tex_mu+(TEX @ beta)).reshape(-1, 1)
-    np.savetxt(shp_path, np.concatenate((x,y,z), axis=1))
-    np.savetxt(tex_path, tex)
+#def save_identity_and_shape(alpha, beta, shp_path, tex_path, morphable_model):
+#    sdir = './models/MMs/%s' % morphable_model 
+#    IX  = np.loadtxt('%s/IX.dat' % sdir)
+#    IY  = np.loadtxt('%s/IY.dat' % sdir)
+#    IZ  = np.loadtxt('%s/IZ.dat' % sdir)
+#    
+#    TEX  = np.loadtxt('%s/TEX.dat' % sdir)
+#    
+#    tex_mu = np.loadtxt('%s/tex_mu.dat' % sdir)
+#    
+#    x0 = np.loadtxt('%s/X0_mean.dat' % sdir)
+#    y0 = np.loadtxt('%s/Y0_mean.dat' % sdir)
+#    z0 = np.loadtxt('%s/Z0_mean.dat' % sdir)
+#    
+#    x = (x0+(IX @ alpha)).reshape(-1,1)
+#    y = (y0+(IY @ alpha)).reshape(-1,1)
+#    z = (z0+(IZ @ alpha)).reshape(-1,1)
+#    
+#    tex = (tex_mu+(TEX @ beta)).reshape(-1, 1)
+#    np.savetxt(shp_path, np.concatenate((x,y,z), axis=1))
+#    np.savetxt(tex_path, tex)
     
 
 def plot_landmarks(vid_fpath, lmks_path, out_video_path):
@@ -244,10 +244,14 @@ def process_single_video(args,
     beta_sm =  0.70*np.loadtxt(tex_cfpath)
     
     if not os.path.exists(shp_fpath) or not os.path.exists(tex_fpath):
-        save_identity_and_shape(alpha, beta, shp_fpath, tex_fpath, morphable_model)
+        # save_identity_and_shape(alpha, beta, shp_fpath, tex_fpath, morphable_model)
+        cmd_save = 'python ./scripts/save_identity_and_shape.py %s %s %s %s %s' % (alpha, beta, shp_fpath, tex_fpath, morphable_model)
+        os.system(cmd_save)
         
     if not os.path.exists(shpsm_fpath) or not os.path.exists(texsm_fpath):
-        save_identity_and_shape(alpha_sm, beta_sm, shpsm_fpath, texsm_fpath, morphable_model)
+        # save_identity_and_shape(alpha_sm, beta_sm, shpsm_fpath, texsm_fpath, morphable_model)
+        cmd_save = 'python ./scripts/save_identity_and_shape.py %s %s %s %s %s' % (alpha_sm, beta_sm, shpsm_fpath, texsm_fpath, morphable_model)
+        os.system(cmd_save)
     
     exp_path = '%s/%s.expressions' % (out_dir, bbn)
     exps_path = '%s/%s.expressions_smooth' % (out_dir, bbn)
