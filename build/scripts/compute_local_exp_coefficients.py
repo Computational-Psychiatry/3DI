@@ -25,6 +25,7 @@ basis_version = sys.argv[4] # '0.0.1.4'
 
 sdir = f'models/MMs/{morphable_model}/'
 localized_basis_file = f'models/MMs/{morphable_model}/E/localized_basis/v.{basis_version}.npy'
+
 basis_set = np.load(localized_basis_file, allow_pickle=True).item()
 
 # @TODO the code does not work for differential expression computation
@@ -62,4 +63,4 @@ for feat in facial_feats:
     
 C = np.concatenate(C)
 
-np.savetxt(local_exp_coeffs_file, C)
+np.savetxt(local_exp_coeffs_file, C.T)
