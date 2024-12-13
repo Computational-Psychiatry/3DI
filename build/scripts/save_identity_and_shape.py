@@ -8,11 +8,16 @@ Created on Fri Dec  13 15:20:05 2024
 import numpy as np
 import sys
 
-alpha = sys.argv[1]
-beta = sys.argv[2]
-shp_path = sys.argv[3]
-tex_path = sys.argv[4]
-morphable_model = sys.argv[5]
+alpha_path = sys.argv[1]
+beta_path = sys.argv[2]
+alpha_coef = float(sys.argv[3])
+beta_coef = float(sys.argv[4])
+shp_path = sys.argv[5]
+tex_path = sys.argv[6]
+morphable_model = sys.argv[7]
+
+alpha = alpha_coef * np.loadtxt(alpha_path)
+beta =  beta_coef * np.loadtxt(beta_path)
 
 sdir = './models/MMs/%s' % morphable_model 
 
