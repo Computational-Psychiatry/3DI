@@ -245,12 +245,12 @@ def process_single_video(args,
     
     if not os.path.exists(shp_fpath) or not os.path.exists(tex_fpath):
         # save_identity_and_shape(alpha, beta, shp_fpath, tex_fpath, morphable_model)
-        cmd_save = 'python ./scripts/save_identity_and_shape.py %s %s %s %s %s' % (shp_cfpath, tex_cfpath, 1, 0.4, shp_fpath, tex_fpath, morphable_model)
+        cmd_save = 'python ./scripts/save_identity_and_shape.py %s %s %s %s %s' % (shp_cfpath, tex_cfpath, '1', '0.4', shp_fpath, tex_fpath, morphable_model)
         os.system(cmd_save)
         
     if not os.path.exists(shpsm_fpath) or not os.path.exists(texsm_fpath):
         # save_identity_and_shape(alpha_sm, beta_sm, shpsm_fpath, texsm_fpath, morphable_model)
-        cmd_save = 'python ./scripts/save_identity_and_shape.py %s %s %s %s %s' % (shp_cfpath, tex_cfpath, 0.7, 0.7, shpsm_fpath, texsm_fpath, morphable_model)
+        cmd_save = 'python ./scripts/save_identity_and_shape.py %s %s %s %s %s' % (shp_cfpath, tex_cfpath, '0.7', '0.7', shpsm_fpath, texsm_fpath, morphable_model)
         os.system(cmd_save)
     
     exp_path = '%s/%s.expressions' % (out_dir, bbn)
