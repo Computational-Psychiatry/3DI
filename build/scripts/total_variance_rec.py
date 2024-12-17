@@ -85,8 +85,8 @@ for ti in range(num_wins):
     prob = cp.Problem(objective, constraints)
     x.value = e1[t0:tf,:].T
     
-    #result = prob.solve(solver='SCS')
-    result = prob.solve()
+    result = prob.solve(solver='SCS')
+    #result = prob.solve()
     xprev = x.value
     
     if lastpart:
